@@ -79,6 +79,14 @@ cd HomeAssistant
 
 ### 3. 安装依赖
 
+#### Ubuntu/Debian 用户（推荐）：
+```bash
+# 使用专用安装脚本（会自动处理环境问题）
+chmod +x install_deps.sh
+./install_deps.sh
+```
+
+#### 其他系统或手动安装：
 ```bash
 # 使用启动脚本（推荐）
 chmod +x start.sh
@@ -88,6 +96,10 @@ chmod +x start.sh
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+
+# 如果遇到 externally-managed-environment 错误，运行修复脚本
+chmod +x fix_env.sh
+./fix_env.sh
 ```
 
 ### 4. 配置模型文件
@@ -191,24 +203,47 @@ python main.py
 
 ### 常见问题
 
-1. **音频设备问题**
+1. **externally-managed-environment 错误**
+   ```bash
+   # Ubuntu/Debian的新安全特性，尝试以下解决方案：
+
+   # 方案1：使用修复脚本
+   chmod +x fix_env.sh
+   ./fix_env.sh
+
+   # 方案2：手动创建新的虚拟环境
+   rm -rf venv
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+
+   # 方案3：检查环境状态
+   echo $VIRTUAL_ENV
+   which pip
+   which python
+
+   # 如果必须使用系统环境（不推荐）
+   pip install --break-system-packages -r requirements.txt
+   ```
+
+2. **音频设备问题**
    ```bash
    # 检查音频设备
    arecord -l  # 列出录音设备
    aplay -l    # 列出播放设备
    ```
 
-2. **模型文件问题**
+3. **模型文件问题**
    - ModelScope会自动下载模型到~/models目录
    - 如果下载失败，检查网络连接和磁盘空间
    - 验证模型ID是否正确
 
-3. **API连接问题**
+4. **API连接问题**
    - 检查网络连接
    - 验证DashScope API密钥是否正确
    - 检查阿里云账户余额
 
-4. **阿里云服务问题**
+5. **阿里云服务问题**
    - SenseVoice: 检查模型ID (iic/SenseVoiceSmall)
    - CosyVoice: 检查模型ID (iic/CosyVoice2-0.5B)
    - Qwen: 检查模型名称 (qwen-turbo, qwen-plus, etc.)
