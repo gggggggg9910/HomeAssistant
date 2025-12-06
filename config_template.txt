@@ -1,0 +1,34 @@
+# Alibaba DashScope API Configuration (for Qwen models)
+DASHSCOPE_API_KEY=your_dashscope_api_key_here
+LLM_BASE_URL=https://dashscope.aliyuncs.com/api/v1
+LLM_MODEL=qwen-turbo
+LLM_USE_LOCAL=false
+
+# Audio Settings
+AUDIO_SAMPLE_RATE=16000
+AUDIO_CHANNELS=1
+AUDIO_CHUNK_SIZE=1024
+
+# Keyword Spotting (sherpa-onnx-kws)
+KWS_MODEL_PATH=~/models/kws-onnx
+KWS_KEYWORD=你好小助手
+KWS_THRESHOLD=0.5
+
+# Speech Recognition (Alibaba SenseVoice)
+ASR_MODEL_ID=iic/SenseVoiceSmall
+ASR_MODEL_PATH=~/models/sensevoice
+ASR_LANGUAGE=zh
+
+# Text-to-Speech (Alibaba CosyVoice2-0.5B)
+TTS_MODEL_ID=iic/CosyVoice2-0.5B
+TTS_MODEL_PATH=~/models/cosyvoice
+TTS_VOICE=中文女
+TTS_SPEED=1.0
+TTS_VOLUME=0.8
+
+# GPU Settings (set to true if you have GPU support)
+ASR_USE_GPU=false
+TTS_USE_GPU=false
+
+# Logging
+LOG_LEVEL=INFO
