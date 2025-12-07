@@ -89,6 +89,8 @@ async def test_dashscope():
         import dashscope
         print("✓ DashScope available")
 
+        print(f"LLM API key: {settings.llm.api_key}")
+        print(f"LLM dashscope_api_key: {settings.llm.dashscope_api_key}")
         if settings.llm.api_key:
             print("✓ DashScope API key configured")
         else:

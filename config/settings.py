@@ -32,6 +32,7 @@ class ASRSettings(BaseSettings):
     language: str = "zh"
     max_wait_seconds: int = 10
     use_gpu: bool = False  # Use GPU if available
+    disable_update: bool = True  # Disable model update checks for faster startup
 
 
 class TTSSettings(BaseSettings):
@@ -46,13 +47,20 @@ class TTSSettings(BaseSettings):
 
 class LLMSettings(BaseSettings):
     """Large language model configuration."""
-    api_key: Optional[str] = Field(default=None, alias="DASHSCOPE_API_KEY")  # DashScope API key for Alibaba Qwen
+    dashscope_api_key: Optional[str] = Field(default=None, alias="DASHSCOPE_API_KEY")  # DashScope API key for Alibaba Qwen
+    api_key: Optional[str] = None  # Will be set from dashscope_api_key
     base_url: str = "https://dashscope.aliyuncs.com/api/v1"
     model: str = "qwen-turbo"  # Alibaba Qwen model
     temperature: float = 0.7
     max_tokens: int = 1000
     timeout: int = 30
     use_local: bool = False  # Use local Qwen model instead of API
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Set api_key from dashscope_api_key for backward compatibility
+        if self.api_key is None and self.dashscope_api_key is not None:
+            self.api_key = self.dashscope_api_key
 
 
 class LoggingSettings(BaseSettings):

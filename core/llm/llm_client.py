@@ -137,6 +137,9 @@ class LLMClient:
             logger.error("dashscope not available. Please install with: pip install dashscope")
             return False
 
+        # Debug: print API key status
+        logger.info(f"Checking API key - exists: {self.config.api_key is not None}, value: {'*' * len(self.config.api_key) if self.config.api_key else 'None'}")
+
         if not self.config.api_key:
             logger.error("DashScope API key not provided")
             return False

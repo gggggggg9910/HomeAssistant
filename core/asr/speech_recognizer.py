@@ -33,7 +33,8 @@ class ASRConfig:
         language: str = "zh",
         max_wait_seconds: int = 10,
         use_gpu: bool = False,
-        sample_rate: int = 16000
+        sample_rate: int = 16000,
+        disable_update: bool = True  # Disable model update checks for faster startup
     ):
         self.model_id = model_id
         self.model_path = Path(model_path).expanduser()
@@ -41,6 +42,7 @@ class ASRConfig:
         self.max_wait_seconds = max_wait_seconds
         self.use_gpu = use_gpu
         self.sample_rate = sample_rate
+        self.disable_update = disable_update
 
 
 class SpeechRecognizer:
@@ -75,31 +77,27 @@ class SpeechRecognizer:
             device = "cuda" if self.config.use_gpu and torch.cuda.is_available() else "cpu"
 
             # Create ASR pipeline
+            pipeline_kwargs = {
+                'task': Tasks.auto_speech_recognition,
+                'model': self.config.model_id,
+                'device': device,
+                'disable_update': self.config.disable_update
+            }
+
             try:
                 # Try with default revision first
-                self.pipeline = pipeline(
-                    task=Tasks.auto_speech_recognition,
-                    model=self.config.model_id,
-                    device=device
-                )
+                self.pipeline = pipeline(**pipeline_kwargs)
             except Exception as revision_error:
                 logger.warning(f"Failed to load with default revision: {revision_error}")
                 # Try with latest revision
                 try:
-                    self.pipeline = pipeline(
-                        task=Tasks.auto_speech_recognition,
-                        model=self.config.model_id,
-                        device=device,
-                        model_revision="master"  # Use master branch
-                    )
+                    pipeline_kwargs['model_revision'] = "master"  # Use master branch
+                    self.pipeline = pipeline(**pipeline_kwargs)
                 except Exception as master_error:
                     logger.warning(f"Failed to load with master revision: {master_error}")
                     # Try without revision parameter
-                    self.pipeline = pipeline(
-                        task=Tasks.auto_speech_recognition,
-                        model=self.config.model_id,
-                        device=device
-                    )
+                    del pipeline_kwargs['model_revision']
+                    self.pipeline = pipeline(**pipeline_kwargs)
 
             self._is_initialized = True
             logger.info(f"SenseVoice speech recognizer initialized (device: {device})")

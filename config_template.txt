@@ -19,6 +19,7 @@ KWS_THRESHOLD=0.5
 ASR_MODEL_ID=iic/SenseVoiceSmall
 ASR_MODEL_PATH=~/models/sensevoice
 ASR_LANGUAGE=zh
+ASR_DISABLE_UPDATE=true
 
 # Text-to-Speech (Alibaba CosyVoice2-0.5B)
 TTS_MODEL_ID=iic/CosyVoice2-0.5B

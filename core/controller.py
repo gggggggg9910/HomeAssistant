@@ -83,7 +83,8 @@ class VoiceAssistantController:
                 model_path=str(self.config.asr.model_path),
                 language=self.config.asr.language,
                 max_wait_seconds=self.config.asr.max_wait_seconds,
-                sample_rate=self.config.audio.sample_rate
+                sample_rate=self.config.audio.sample_rate,
+                disable_update=self.config.asr.disable_update
             )
             self.speech_recognizer = SpeechRecognizer(asr_config)
             if not await self.speech_recognizer.initialize():
@@ -121,10 +122,10 @@ class VoiceAssistantController:
                 logger.warning("Failed to initialize LLM client - LLM features will be disabled")
                 logger.warning("To enable LLM, configure DASHSCOPE_API_KEY or set LLM_USE_LOCAL=true")
                 self.llm_client = None  # Disable LLM functionality
-
-            # Test LLM connection
-            if not await self.llm_client.test_connection():
-                logger.warning("LLM API connection test failed, but continuing...")
+            else:
+                # Test LLM connection
+                if not await self.llm_client.test_connection():
+                    logger.warning("LLM API connection test failed, but continuing...")
 
             logger.info("Voice assistant controller initialized successfully")
             return True
