@@ -151,6 +151,25 @@ class LLMClient:
             logger.error("DashScope API key not provided")
             return False
 
+        # Test API key with a simple call
+        try:
+            logger.info("Testing API key with simple call...")
+            test_response = Generation.call(
+                model="qwen-turbo",
+                messages=[{"role": "user", "content": "Hello"}],
+                max_tokens=10,
+                api_key=api_key
+            )
+            logger.info(f"Test response status: {getattr(test_response, 'status_code', 'No status')}")
+            if test_response and hasattr(test_response, 'status_code') and test_response.status_code == 200:
+                logger.info("API key test successful")
+            else:
+                logger.error(f"API key test failed: {getattr(test_response, 'message', 'Unknown error')}")
+                return False
+        except Exception as e:
+            logger.error(f"API key test error: {e}")
+            return False
+
         try:
             # Set API key
             dashscope.api_key = api_key
@@ -268,6 +287,11 @@ class LLMClient:
                 elif msg.role == "assistant":
                     messages.append({"role": "assistant", "content": msg.content})
 
+            # Debug: log request details
+            logger.info(f"Making DashScope API call with model: {self.config.model}")
+            logger.info(f"API key provided: {api_key is not None}")
+            logger.info(f"Messages count: {len(messages)}")
+
             # Call DashScope API
             response = Generation.call(
                 model=self.config.model,
@@ -277,15 +301,30 @@ class LLMClient:
                 api_key=api_key
             )
 
-            if response.status_code == 200:
-                content = response.output.choices[0].message.content
-                return content.strip()
+            # Debug: log response details
+            logger.info(f"Response status_code: {getattr(response, 'status_code', 'No status_code')}")
+            logger.info(f"Response has output: {hasattr(response, 'output') and response.output is not None}")
+            if hasattr(response, 'message'):
+                logger.info(f"Response message: {response.message}")
+            if hasattr(response, 'code'):
+                logger.info(f"Response code: {response.code}")
+
+            # Check for successful response
+            if response and hasattr(response, 'status_code') and response.status_code == 200:
+                if response.output and hasattr(response.output, 'choices') and response.output.choices:
+                    content = response.output.choices[0].message.content
+                    return content.strip()
+                else:
+                    logger.error(f"DashScope API returned invalid output structure: {response}")
+                    return None
             else:
-                logger.error(f"DashScope API error: {response.status_code} - {response.message}")
+                logger.error(f"DashScope API error: status_code={getattr(response, 'status_code', 'Unknown')}, message={getattr(response, 'message', 'No message')}")
                 return None
 
         except Exception as e:
             logger.error(f"DashScope API request error: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return None
 
     async def _generate_local_response(self) -> Optional[str]:
