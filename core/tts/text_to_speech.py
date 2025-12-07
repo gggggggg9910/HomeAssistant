@@ -11,14 +11,14 @@ import numpy as np
 try:
     import torch
     from modelscope import snapshot_download
-    from modelscope.pipelines import pipeline
+    from modelscope.pipelines import pipeline as ms_pipeline
     from modelscope.utils.constant import Tasks
     MODELScope_AVAILABLE = True
 except ImportError:
     MODELScope_AVAILABLE = False
     torch = None
     snapshot_download = None
-    pipeline = None
+    ms_pipeline = None
     Tasks = None
 
 logger = logging.getLogger(__name__)
@@ -60,45 +60,83 @@ class TextToSpeech:
             return False
 
         try:
-            # Download model if not exists
-            model_path = self.config.model_path
-            if not model_path.exists():
+            # Check if model already exists locally
+            model_path = None
+
+            # First, check the configured model path
+            configured_path = self.config.model_path
+            if configured_path.exists() and any(configured_path.iterdir()):
+                model_path = configured_path
+                logger.info(f"Using existing model at configured path: {model_path}")
+            else:
+                # Check default modelscope cache path
+                try:
+                    from modelscope.hub.file_download import model_file_download
+                    from modelscope.utils.constant import DEFAULT_MODELSCOPE_CACHE
+                    import os
+
+                    cache_path = Path(DEFAULT_MODELSCOPE_CACHE) / self.config.model_id.split('/')[-1]
+                    if cache_path.exists() and any(cache_path.iterdir()):
+                        model_path = cache_path
+                        logger.info(f"Using existing model in cache: {model_path}")
+                except Exception as cache_check_error:
+                    logger.debug(f"Cache path check failed: {cache_check_error}")
+
+            # If no local model found, download it
+            if model_path is None:
                 logger.info(f"Downloading CosyVoice2-0.5B model: {self.config.model_id}")
-                model_path = snapshot_download(
+                model_path = Path(snapshot_download(
                     self.config.model_id,
-                    cache_dir=str(model_path.parent)
-                )
+                    cache_dir=str(self.config.model_path.parent)
+                ))
                 logger.info(f"Model downloaded to: {model_path}")
+            else:
+                logger.info(f"Using cached model at: {model_path}")
 
             # Set device
             device = "cuda" if self.config.use_gpu and torch.cuda.is_available() else "cpu"
 
-            # Create TTS pipeline
+            # Create TTS pipeline for CosyVoice
             try:
-                # Try with default revision first
-                self.pipeline = pipeline(
-                    task=Tasks.text_to_speech,
-                    model=self.config.model_id,
-                    device=device
-                )
-            except Exception as revision_error:
-                logger.warning(f"Failed to load TTS with default revision: {revision_error}")
-                # Try with latest revision
-                try:
-                    self.pipeline = pipeline(
-                        task=Tasks.text_to_speech,
-                        model=self.config.model_id,
-                        device=device,
-                        model_revision="master"  # Use master branch
-                    )
-                except Exception as master_error:
-                    logger.warning(f"Failed to load TTS with master revision: {master_error}")
-                    # Try without revision parameter
-                    self.pipeline = pipeline(
-                        task=Tasks.text_to_speech,
-                        model=self.config.model_id,
+                # Try to use local model path if available
+                if model_path and model_path.exists():
+                    # Use local model path
+                    self.pipeline = ms_pipeline(
+                        task='text-to-speech',
+                        model=str(model_path),
                         device=device
                     )
+                    logger.info(f"CosyVoice pipeline created from local path: {model_path}")
+                else:
+                    # Fallback to model ID (will download if needed)
+                    self.pipeline = ms_pipeline(
+                        task='text-to-speech',
+                        model=self.config.model_id,
+                        device=device,
+                        model_revision='v1.0.0'  # Use stable version
+                    )
+                    logger.info("CosyVoice pipeline created from model ID")
+            except Exception as e:
+                logger.warning(f"Failed to load CosyVoice with default config: {e}")
+                # Try alternative loading method
+                try:
+                    if model_path and model_path.exists():
+                        self.pipeline = ms_pipeline(
+                            task='text-to-speech',
+                            model=str(model_path),
+                            device=device
+                        )
+                        logger.info(f"CosyVoice pipeline created from local path (fallback): {model_path}")
+                    else:
+                        self.pipeline = ms_pipeline(
+                            task='text-to-speech',
+                            model=self.config.model_id,
+                            device=device
+                        )
+                        logger.info("CosyVoice pipeline created from model ID (fallback)")
+                except Exception as fallback_error:
+                    logger.error(f"All CosyVoice loading attempts failed: {fallback_error}")
+                    return False
 
             self._is_initialized = True
             logger.info(f"CosyVoice2-0.5B TTS initialized (device: {device})")
@@ -133,11 +171,15 @@ class TextToSpeech:
 
         try:
             # Prepare input for CosyVoice
-            # CosyVoice expects specific input format
+            # CosyVoice expects text as primary input
             input_data = {
-                'text': text,
-                'voice': self.voice
+                'text': text
             }
+
+            # Some CosyVoice versions may support voice parameter
+            # Add voice if supported by the model
+            if hasattr(self.pipeline, 'model') and hasattr(self.pipeline.model, 'support_voice_selection'):
+                input_data['voice'] = self.voice
 
             # Generate speech
             result = self.pipeline(input_data)
