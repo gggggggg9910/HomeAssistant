@@ -47,8 +47,8 @@ class TTSSettings(BaseSettings):
 
 class LLMSettings(BaseSettings):
     """Large language model configuration."""
-    dashscope_api_key: Optional[str] = Field(default=None, alias="DASHSCOPE_API_KEY")  # DashScope API key for Alibaba Qwen
-    api_key: Optional[str] = None  # Will be set from dashscope_api_key
+    DASHSCOPE_API_KEY: Optional[str] = None  # DashScope API key for Alibaba Qwen
+    api_key: Optional[str] = None  # Will be set from DASHSCOPE_API_KEY
     base_url: str = "https://dashscope.aliyuncs.com/api/v1"
     model: str = "qwen-turbo"  # Alibaba Qwen model
     temperature: float = 0.7
@@ -58,9 +58,9 @@ class LLMSettings(BaseSettings):
 
     def __init__(self, **data):
         super().__init__(**data)
-        # Set api_key from dashscope_api_key for backward compatibility
-        if self.api_key is None and self.dashscope_api_key is not None:
-            self.api_key = self.dashscope_api_key
+        # Set api_key from DASHSCOPE_API_KEY for backward compatibility
+        if self.api_key is None and self.DASHSCOPE_API_KEY is not None:
+            self.api_key = self.DASHSCOPE_API_KEY
 
 
 class LoggingSettings(BaseSettings):

@@ -137,16 +137,23 @@ class LLMClient:
             logger.error("dashscope not available. Please install with: pip install dashscope")
             return False
 
-        # Debug: print API key status
-        logger.info(f"Checking API key - exists: {self.config.api_key is not None}, value: {'*' * len(self.config.api_key) if self.config.api_key else 'None'}")
+        # Debug: print API key status and try direct env read
+        import os
+        direct_env_key = os.environ.get('DASHSCOPE_API_KEY')
+        logger.info(f"Config API key exists: {self.config.api_key is not None}")
+        logger.info(f"Direct env DASHSCOPE_API_KEY exists: {direct_env_key is not None}")
+        logger.info(f"Config API key value: {'*' * len(self.config.api_key) if self.config.api_key else 'None'}")
 
-        if not self.config.api_key:
+        # Use direct env var if config doesn't have it
+        api_key = self.config.api_key or direct_env_key
+
+        if not api_key:
             logger.error("DashScope API key not provided")
             return False
 
         try:
             # Set API key
-            dashscope.api_key = self.config.api_key
+            dashscope.api_key = api_key
             self._is_initialized = True
             logger.info(f"DashScope API client initialized with model: {self.config.model}")
             return True
@@ -247,6 +254,10 @@ class LLMClient:
     async def _generate_dashscope_response(self) -> Optional[str]:
         """Generate response using DashScope API."""
         try:
+            # Get API key (use config or direct env)
+            import os
+            api_key = self.config.api_key or os.environ.get('DASHSCOPE_API_KEY')
+
             # Prepare messages (DashScope format)
             messages = []
             for msg in self.conversation.messages:
@@ -263,7 +274,7 @@ class LLMClient:
                 messages=messages,
                 temperature=self.config.temperature,
                 max_tokens=self.config.max_tokens,
-                api_key=self.config.api_key
+                api_key=api_key
             )
 
             if response.status_code == 200:
