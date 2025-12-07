@@ -67,11 +67,24 @@ class LLMSettings(BaseSettings):
         "env_file_encoding": "utf-8",
     }
 
-    def __init__(self, **data):
-        super().__init__(**data)
-        # Directly read from environment variable if not set
-        if self.api_key is None:
-            self.api_key = os.environ.get('DASHSCOPE_API_KEY')
+    @classmethod
+    def settings_customise_sources(cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings):
+        """Custom source for environment variables."""
+        # First try dotenv, then env
+        sources = [dotenv_settings, env_settings]
+
+        # Add direct os.environ access as fallback
+        def custom_env_source(settings_cls):
+            d = {}
+            for field_name, field_info in settings_cls.model_fields.items():
+                if field_name == 'api_key':
+                    env_value = os.environ.get('DASHSCOPE_API_KEY')
+                    if env_value:
+                        d[field_name] = env_value
+            return d
+
+        sources.append(custom_env_source)
+        return (init_settings, *sources, file_secret_settings)
 
 
 class LoggingSettings(BaseSettings):
