@@ -69,18 +69,30 @@ class TextToSpeech:
                 model_path = configured_path
                 logger.info(f"Using existing model at configured path: {model_path}")
             else:
-                # Check default modelscope cache path
-                try:
-                    from modelscope.hub.file_download import model_file_download
-                    from modelscope.utils.constant import DEFAULT_MODELSCOPE_CACHE
-                    import os
+                # Check known model locations
+                possible_paths = [
+                    # User's actual model location
+                    Path.home() / "models" / "iic" / "CosyVoice2-0.5B",
+                    # User's cache location
+                    Path.home() / ".cache" / "modelscope" / "hub" / "models" / "iic" / "CosyVoice2-0.5B",
+                    # Default modelscope cache
+                    Path.home() / ".cache" / "modelscope" / "hub" / "models" / "iic" / "CosyVoice2-0.5B",
+                ]
 
-                    cache_path = Path(DEFAULT_MODELSCOPE_CACHE) / self.config.model_id.split('/')[-1]
-                    if cache_path.exists() and any(cache_path.iterdir()):
-                        model_path = cache_path
-                        logger.info(f"Using existing model in cache: {model_path}")
-                except Exception as cache_check_error:
-                    logger.debug(f"Cache path check failed: {cache_check_error}")
+                # Add default modelscope cache if available
+                try:
+                    from modelscope.utils.constant import DEFAULT_MODELSCOPE_CACHE
+                    if DEFAULT_MODELSCOPE_CACHE:
+                        possible_paths.append(Path(DEFAULT_MODELSCOPE_CACHE) / "iic" / "CosyVoice2-0.5B")
+                except Exception:
+                    pass
+
+                # Check all possible paths
+                for check_path in possible_paths:
+                    if check_path.exists() and any(check_path.iterdir()):
+                        model_path = check_path
+                        logger.info(f"Using existing model at: {model_path}")
+                        break
 
             # If no local model found, download it
             if model_path is None:

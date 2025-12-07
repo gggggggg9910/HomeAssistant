@@ -66,4 +66,4 @@ try {
 Write-Host ""
 Write-Host "✅ All operations completed successfully!" -ForegroundColor Green
 Write-Host "🎉 Changes have been committed and pushed!" -ForegroundColor Green
-Read-Host "Press Enter to exit"
+exit 0
