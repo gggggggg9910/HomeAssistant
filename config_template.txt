@@ -1,9 +1,10 @@
 # Alibaba DashScope API Configuration (for Qwen models)
-DASHSCOPE_API_KEY=your_dashscope_api_key_here_
+DASHSCOPE_API_KEY=your_dashscope_api_key_here
 LLM_BASE_URL=https://dashscope.aliyuncs.com/api/v1
 LLM_MODEL=qwen-turbo
 LLM_USE_LOCAL=false
 
+#aaa
 # Audio Settings
 AUDIO_SAMPLE_RATE=16000
 AUDIO_CHANNELS=1
