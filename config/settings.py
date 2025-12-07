@@ -23,6 +23,10 @@ class AudioSettings(BaseSettings):
     input_device: Optional[int] = None
     output_device: Optional[int] = None
 
+    model_config = {
+        "extra": "allow"
+    }
+
 
 class KWSSettings(BaseSettings):
     """Keyword spotting configuration."""
@@ -30,6 +34,10 @@ class KWSSettings(BaseSettings):
     keyword: str = "你好小助手"
     threshold: float = 0.5
     max_wait_seconds: int = 30
+
+    model_config = {
+        "extra": "allow"
+    }
 
 
 class ASRSettings(BaseSettings):
@@ -41,6 +49,10 @@ class ASRSettings(BaseSettings):
     use_gpu: bool = False  # Use GPU if available
     disable_update: bool = True  # Disable model update checks for faster startup
 
+    model_config = {
+        "extra": "allow"
+    }
+
 
 class TTSSettings(BaseSettings):
     """Text-to-speech configuration."""
@@ -50,6 +62,10 @@ class TTSSettings(BaseSettings):
     speed: float = 1.0
     volume: float = 0.8
     use_gpu: bool = False  # Use GPU if available
+
+    model_config = {
+        "extra": "allow"
+    }
 
 
 class LLMSettings(BaseSettings):
@@ -65,6 +81,7 @@ class LLMSettings(BaseSettings):
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
+        "extra": "allow"
     }
 
     @classmethod
@@ -93,6 +110,10 @@ class LoggingSettings(BaseSettings):
     file_path: str = "logs/assistant.log"
     max_file_size: int = 10 * 1024 * 1024  # 10MB
     backup_count: int = 5
+
+    model_config = {
+        "extra": "allow"
+    }
 
 
 class Settings(BaseSettings):
