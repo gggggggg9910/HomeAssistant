@@ -111,6 +111,10 @@ class PyAudioInputInterface(AudioInputInterface):
         """Check if currently recording."""
         return self._recording
 
+    def is_initialized(self) -> bool:
+        """Check if interface is initialized."""
+        return self._is_initialized
+
     async def record_chunk(self, duration_seconds: float) -> Optional[np.ndarray]:
         """Record a single chunk of audio."""
         if not self._is_initialized:
@@ -282,3 +286,7 @@ class PyAudioOutputInterface(AudioOutputInterface):
     def is_playing(self) -> bool:
         """Check if currently playing audio."""
         return self._playing
+
+    def is_initialized(self) -> bool:
+        """Check if interface is initialized."""
+        return self._is_initialized
