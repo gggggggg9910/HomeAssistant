@@ -32,13 +32,15 @@ class ASRConfig:
         model_path: str = "~/models/sensevoice",
         language: str = "zh",
         max_wait_seconds: int = 10,
-        use_gpu: bool = False
+        use_gpu: bool = False,
+        sample_rate: int = 16000
     ):
         self.model_id = model_id
         self.model_path = Path(model_path).expanduser()
         self.language = language
         self.max_wait_seconds = max_wait_seconds
         self.use_gpu = use_gpu
+        self.sample_rate = sample_rate
 
 
 class SpeechRecognizer:

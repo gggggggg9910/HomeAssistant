@@ -33,7 +33,8 @@ class TTSConfig:
         voice: str = "中文女",  # Voice style for CosyVoice
         speed: float = 1.0,
         volume: float = 0.8,
-        use_gpu: bool = False
+        use_gpu: bool = False,
+        sample_rate: int = 16000
     ):
         self.model_id = model_id
         self.model_path = Path(model_path).expanduser()
@@ -41,6 +42,7 @@ class TTSConfig:
         self.speed = speed
         self.volume = volume
         self.use_gpu = use_gpu
+        self.sample_rate = sample_rate
 
 
 class TextToSpeech:
