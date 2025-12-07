@@ -21,11 +21,13 @@ class TTSConfig:
     def __init__(
         self,
         model_id: str = "damo/CosyVoice2-0.5B",
+        model_path: Optional[str] = None,
         voice: str = "中文女",
         speed: float = 1.0,
         volume: float = 0.8
     ):
         self.model_id = model_id
+        self.model_path = model_path  # Local model path, e.g., ~/models/iic/CosyVoice2-0.5B/CosyVoice-BlankEN/
         self.voice = voice
         self.speed = speed
         self.volume = volume
@@ -46,10 +48,11 @@ class TextToSpeech:
             return False
 
         try:
-            # Direct pipeline initialization with ModelScope ID
-            self.pipeline = pipeline('text-to-speech', model=self.config.model_id)
+            # Use local model path if provided, otherwise use ModelScope ID
+            model_source = self.config.model_path if self.config.model_path else self.config.model_id
+            self.pipeline = pipeline('text-to-speech', model=model_source)
             self._is_initialized = True
-            logger.info(f"CosyVoice2-0.5B TTS initialized with model: {self.config.model_id}")
+            logger.info(f"CosyVoice2-0.5B TTS initialized with model: {model_source}")
             return True
 
         except Exception as e:

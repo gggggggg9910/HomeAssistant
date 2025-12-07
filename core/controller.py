@@ -94,6 +94,7 @@ class VoiceAssistantController:
             from .tts import TextToSpeech, TTSConfig
             tts_config = TTSConfig(
                 model_id=self.config.tts.model_id,
+                model_path=self.config.tts.model_path if self.config.tts.model_path else None,
                 voice=self.config.tts.voice,
                 speed=self.config.tts.speed,
                 volume=self.config.tts.volume
