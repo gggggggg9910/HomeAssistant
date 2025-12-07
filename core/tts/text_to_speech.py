@@ -11,14 +11,14 @@ import numpy as np
 try:
     import torch
     from modelscope import snapshot_download
-    from modelscope.pipelines import pipeline as ms_pipeline
+    from modelscope.pipelines import pipeline
     from modelscope.utils.constant import Tasks
     MODELScope_AVAILABLE = True
 except ImportError:
     MODELScope_AVAILABLE = False
     torch = None
     snapshot_download = None
-    ms_pipeline = None
+    pipeline = None
     Tasks = None
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class TTSConfig:
     """Configuration for Alibaba CosyVoice2-0.5B TTS."""
     def __init__(
         self,
-        model_id: str = "iic/CosyVoice2-0.5B",
+        model_id: str = "damo/CosyVoice2-0.5B",
         model_path: str = "~/models/cosyvoice",
         voice: str = "中文女",  # Voice style for CosyVoice
         speed: float = 1.0,
@@ -110,45 +110,64 @@ class TextToSpeech:
 
             # Create TTS pipeline for CosyVoice
             try:
-                # Try to use local model path if available
+                # Try with default revision first (following ASR pattern)
                 if model_path and model_path.exists():
                     # Use local model path
-                    self.pipeline = ms_pipeline(
-                        task='text-to-speech',
+                    self.pipeline = pipeline(
+                        task=Tasks.text_to_speech,
                         model=str(model_path),
                         device=device
                     )
                     logger.info(f"CosyVoice pipeline created from local path: {model_path}")
                 else:
-                    # Fallback to model ID (will download if needed)
-                    self.pipeline = ms_pipeline(
-                        task='text-to-speech',
+                    # Use model ID
+                    self.pipeline = pipeline(
+                        task=Tasks.text_to_speech,
                         model=self.config.model_id,
-                        device=device,
-                        model_revision='v1.0.0'  # Use stable version
+                        device=device
                     )
                     logger.info("CosyVoice pipeline created from model ID")
-            except Exception as e:
-                logger.warning(f"Failed to load CosyVoice with default config: {e}")
-                # Try alternative loading method
+            except Exception as revision_error:
+                logger.warning(f"Failed to load CosyVoice with default config: {revision_error}")
+                # Try with master revision (following ASR pattern)
                 try:
                     if model_path and model_path.exists():
-                        self.pipeline = ms_pipeline(
-                            task='text-to-speech',
+                        self.pipeline = pipeline(
+                            task=Tasks.text_to_speech,
                             model=str(model_path),
-                            device=device
+                            device=device,
+                            model_revision="master"
                         )
-                        logger.info(f"CosyVoice pipeline created from local path (fallback): {model_path}")
+                        logger.info(f"CosyVoice pipeline created from local path (master revision): {model_path}")
                     else:
-                        self.pipeline = ms_pipeline(
-                            task='text-to-speech',
+                        self.pipeline = pipeline(
+                            task=Tasks.text_to_speech,
                             model=self.config.model_id,
-                            device=device
+                            device=device,
+                            model_revision="master"
                         )
-                        logger.info("CosyVoice pipeline created from model ID (fallback)")
-                except Exception as fallback_error:
-                    logger.error(f"All CosyVoice loading attempts failed: {fallback_error}")
-                    return False
+                        logger.info("CosyVoice pipeline created from model ID (master revision)")
+                except Exception as master_error:
+                    logger.warning(f"Failed to load CosyVoice with master revision: {master_error}")
+                    # Try without revision parameter
+                    try:
+                        if model_path and model_path.exists():
+                            self.pipeline = pipeline(
+                                task=Tasks.text_to_speech,
+                                model=str(model_path),
+                                device=device
+                            )
+                            logger.info(f"CosyVoice pipeline created from local path (no revision): {model_path}")
+                        else:
+                            self.pipeline = pipeline(
+                                task=Tasks.text_to_speech,
+                                model=self.config.model_id,
+                                device=device
+                            )
+                            logger.info("CosyVoice pipeline created from model ID (no revision)")
+                    except Exception as fallback_error:
+                        logger.error(f"All CosyVoice loading attempts failed: {fallback_error}")
+                        return False
 
             self._is_initialized = True
             logger.info(f"CosyVoice2-0.5B TTS initialized (device: {device})")

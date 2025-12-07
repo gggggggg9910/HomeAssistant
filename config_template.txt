@@ -21,7 +21,7 @@ ASR_MODEL_PATH=~/models/sensevoice
 ASR_LANGUAGE=zh
 
 # Text-to-Speech (Alibaba CosyVoice2-0.5B)
-TTS_MODEL_ID=iic/CosyVoice2-0.5B
+TTS_MODEL_ID=damo/CosyVoice2-0.5B
 TTS_MODEL_PATH=~/models/iic/CosyVoice2-0.5B
 TTS_VOICE=中文女
 TTS_SPEED=1.0
