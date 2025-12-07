@@ -49,7 +49,15 @@ class TextToSpeech:
 
         try:
             # Use local model path if provided, otherwise use ModelScope ID
-            model_source = self.config.model_path if self.config.model_path else self.config.model_id
+            if self.config.model_path:
+                # Expand user path (~) and normalize path separators
+                import os
+                model_source = os.path.expanduser(self.config.model_path)
+                model_source = os.path.normpath(model_source)
+                logger.info(f"Using local model path: {model_source}")
+            else:
+                model_source = self.config.model_id
+
             self.pipeline = pipeline('text-to-speech', model=model_source)
             self._is_initialized = True
             logger.info(f"CosyVoice2-0.5B TTS initialized with model: {model_source}")
