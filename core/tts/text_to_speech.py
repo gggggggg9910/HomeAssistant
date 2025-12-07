@@ -28,7 +28,7 @@ class TTSConfig:
     """Configuration for Alibaba CosyVoice2-0.5B TTS."""
     def __init__(
         self,
-        model_id: str = "damo/CosyVoice2-0.5B",
+        model_id: str = "iic/CosyVoice2-0.5B",
         model_path: str = "~/models/cosyvoice",
         voice: str = "中文女",  # Voice style for CosyVoice
         speed: float = 1.0,
@@ -201,18 +201,22 @@ class TextToSpeech:
             return None
 
         try:
-            # Prepare input for CosyVoice
-            # CosyVoice expects text as primary input
+            # Prepare input for CosyVoice2-0.5B
+            # Based on modelscope documentation, input should be a dict with 'text' key
             input_data = {
                 'text': text
             }
 
-            # Some CosyVoice versions may support voice parameter
-            # Add voice if supported by the model
-            if hasattr(self.pipeline, 'model') and hasattr(self.pipeline.model, 'support_voice_selection'):
-                input_data['voice'] = self.voice
+            # CosyVoice2-0.5B may support voice selection
+            # Try to add voice parameter if supported
+            try:
+                if hasattr(self.pipeline, 'model') and hasattr(self.pipeline.model, 'support_voice_selection'):
+                    input_data['voice'] = self.config.voice
+            except:
+                # If voice selection not supported, continue without it
+                pass
 
-            # Generate speech
+            # Generate speech using modelscope pipeline
             result = self.pipeline(input_data)
 
             # Extract audio from result
