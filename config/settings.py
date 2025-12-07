@@ -74,9 +74,9 @@ class LLMSettings(BaseSettings):
         sources = [dotenv_settings, env_settings]
 
         # Add direct os.environ access as fallback
-        def custom_env_source(settings_cls):
+        def custom_env_source():
             d = {}
-            for field_name, field_info in settings_cls.model_fields.items():
+            for field_name, field_info in cls.model_fields.items():
                 if field_name == 'api_key':
                     env_value = os.environ.get('DASHSCOPE_API_KEY')
                     if env_value:
