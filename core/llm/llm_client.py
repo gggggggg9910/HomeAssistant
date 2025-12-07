@@ -151,25 +151,6 @@ class LLMClient:
             logger.error("DashScope API key not provided")
             return False
 
-        # Test API key with a simple call
-        try:
-            logger.info("Testing API key with simple call...")
-            test_response = Generation.call(
-                model="qwen-turbo",
-                messages=[{"role": "user", "content": "Hello"}],
-                max_tokens=10,
-                api_key=api_key
-            )
-            logger.info(f"Test response status: {getattr(test_response, 'status_code', 'No status')}")
-            if test_response and hasattr(test_response, 'status_code') and test_response.status_code == 200:
-                logger.info("API key test successful")
-            else:
-                logger.error(f"API key test failed: {getattr(test_response, 'message', 'Unknown error')}")
-                return False
-        except Exception as e:
-            logger.error(f"API key test error: {e}")
-            return False
-
         try:
             # Set API key
             dashscope.api_key = api_key
@@ -311,8 +292,8 @@ class LLMClient:
 
             # Check for successful response
             if response and hasattr(response, 'status_code') and response.status_code == 200:
-                if response.output and hasattr(response.output, 'choices') and response.output.choices:
-                    content = response.output.choices[0].message.content
+                if response.output and hasattr(response.output, 'text') and response.output.text:
+                    content = response.output.text
                     return content.strip()
                 else:
                     logger.error(f"DashScope API returned invalid output structure: {response}")

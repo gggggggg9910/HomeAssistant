@@ -88,8 +88,9 @@ class VoiceAssistantController:
             )
             self.speech_recognizer = SpeechRecognizer(asr_config)
             if not await self.speech_recognizer.initialize():
-                logger.error("Failed to initialize speech recognizer")
-                return False
+                logger.warning("Failed to initialize speech recognizer - speech recognition will be disabled")
+                logger.warning("This may be due to insufficient memory. Consider using a smaller model or disabling ASR.")
+                self.speech_recognizer = None  # Allow system to continue without ASR
 
             # Initialize TTS engine
             from .tts import TextToSpeech, TTSConfig
