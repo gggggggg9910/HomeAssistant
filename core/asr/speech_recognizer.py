@@ -75,12 +75,31 @@ class SpeechRecognizer:
             device = "cuda" if self.config.use_gpu and torch.cuda.is_available() else "cpu"
 
             # Create ASR pipeline
-            self.pipeline = pipeline(
-                task=Tasks.auto_speech_recognition,
-                model=self.config.model_id,
-                device=device,
-                model_revision="v1.0.0"  # Specify version for stability
-            )
+            try:
+                # Try with default revision first
+                self.pipeline = pipeline(
+                    task=Tasks.auto_speech_recognition,
+                    model=self.config.model_id,
+                    device=device
+                )
+            except Exception as revision_error:
+                logger.warning(f"Failed to load with default revision: {revision_error}")
+                # Try with latest revision
+                try:
+                    self.pipeline = pipeline(
+                        task=Tasks.auto_speech_recognition,
+                        model=self.config.model_id,
+                        device=device,
+                        model_revision="master"  # Use master branch
+                    )
+                except Exception as master_error:
+                    logger.warning(f"Failed to load with master revision: {master_error}")
+                    # Try without revision parameter
+                    self.pipeline = pipeline(
+                        task=Tasks.auto_speech_recognition,
+                        model=self.config.model_id,
+                        device=device
+                    )
 
             self._is_initialized = True
             logger.info(f"SenseVoice speech recognizer initialized (device: {device})")
