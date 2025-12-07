@@ -7,6 +7,13 @@ from typing import Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
+# Manually load .env file before any BaseSettings usage
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not available
+
 
 class AudioSettings(BaseSettings):
     """Audio configuration settings."""
@@ -47,8 +54,7 @@ class TTSSettings(BaseSettings):
 
 class LLMSettings(BaseSettings):
     """Large language model configuration."""
-    DASHSCOPE_API_KEY: Optional[str] = None  # DashScope API key for Alibaba Qwen
-    api_key: Optional[str] = None  # Will be set from DASHSCOPE_API_KEY
+    api_key: Optional[str] = None  # DashScope API key for Alibaba Qwen
     base_url: str = "https://dashscope.aliyuncs.com/api/v1"
     model: str = "qwen-turbo"  # Alibaba Qwen model
     temperature: float = 0.7
@@ -56,11 +62,16 @@ class LLMSettings(BaseSettings):
     timeout: int = 30
     use_local: bool = False  # Use local Qwen model instead of API
 
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+    }
+
     def __init__(self, **data):
         super().__init__(**data)
-        # Set api_key from DASHSCOPE_API_KEY for backward compatibility
-        if self.api_key is None and self.DASHSCOPE_API_KEY is not None:
-            self.api_key = self.DASHSCOPE_API_KEY
+        # Directly read from environment variable if not set
+        if self.api_key is None:
+            self.api_key = os.environ.get('DASHSCOPE_API_KEY')
 
 
 class LoggingSettings(BaseSettings):
