@@ -113,12 +113,14 @@ class VoiceAssistantController:
                 temperature=self.config.llm.temperature,
                 max_tokens=self.config.llm.max_tokens,
                 timeout=self.config.llm.timeout,
+                use_local=self.config.llm.use_local,
                 system_prompt="你是一个智能家居助手，可以帮助用户处理各种任务。请用中文回答用户的问题，保持简洁友好的语气。"
             )
             self.llm_client = LLMClient(llm_config)
             if not await self.llm_client.initialize():
-                logger.error("Failed to initialize LLM client")
-                return False
+                logger.warning("Failed to initialize LLM client - LLM features will be disabled")
+                logger.warning("To enable LLM, configure DASHSCOPE_API_KEY or set LLM_USE_LOCAL=true")
+                self.llm_client = None  # Disable LLM functionality
 
             # Test LLM connection
             if not await self.llm_client.test_connection():
@@ -357,6 +359,10 @@ class VoiceAssistantController:
 
     async def _process_with_llm(self, user_text: str) -> Optional[str]:
         """Process user input with LLM."""
+        if not self.llm_client:
+            logger.warning("LLM client not available")
+            return "抱歉，AI对话功能暂时不可用。请检查API配置。"
+
         try:
             logger.info(f"Processing with LLM: {user_text}")
             response = await self.llm_client.generate_response(user_text)
