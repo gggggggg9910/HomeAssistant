@@ -93,10 +93,12 @@ class VoiceAssistantController:
             # Initialize TTS engine
             from .tts import TextToSpeech, TTSConfig
             tts_config = TTSConfig(
-                engine=self.config.tts.engine,
+                model_id=self.config.tts.model_id,
+                model_path=str(self.config.tts.model_path),
                 voice=self.config.tts.voice,
                 speed=self.config.tts.speed,
                 volume=self.config.tts.volume,
+                use_gpu=self.config.tts.use_gpu,
                 sample_rate=self.config.audio.sample_rate
             )
             self.tts_engine = TextToSpeech(tts_config)
