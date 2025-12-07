@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import Optional
 from pydantic_settings import BaseSettings
+from pydantic import Field
 
 
 class AudioSettings(BaseSettings):
@@ -45,7 +46,7 @@ class TTSSettings(BaseSettings):
 
 class LLMSettings(BaseSettings):
     """Large language model configuration."""
-    api_key: Optional[str] = None  # DashScope API key for Alibaba Qwen
+    api_key: Optional[str] = Field(default=None, alias="DASHSCOPE_API_KEY")  # DashScope API key for Alibaba Qwen
     base_url: str = "https://dashscope.aliyuncs.com/api/v1"
     model: str = "qwen-turbo"  # Alibaba Qwen model
     temperature: float = 0.7
