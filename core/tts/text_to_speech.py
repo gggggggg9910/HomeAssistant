@@ -95,11 +95,11 @@ class TextToSpeech:
             logger.info(f"TTS synthesize_speech called with text: '{text}' (type: {type(text)})")
 
             # Prepare input for CosyVoice2-0.5B
-            input_data = {'text': text}
-            logger.info(f"TTS input_data: {input_data}")
+            # CosyVoice2-0.5B expects text directly, not in a dictionary
+            logger.info(f"TTS input_data: '{text}'")
 
             # Generate speech
-            result = self.pipeline(input_data)
+            result = self.pipeline(text)
 
             # Extract audio from result
             if isinstance(result, dict) and 'output' in result:
@@ -147,7 +147,11 @@ class TextToSpeech:
                 from ..audio import AudioManager, AudioConfig
 
                 # Create audio manager for playback
-                audio_config = AudioConfig(sample_rate=22050)
+                audio_config = AudioConfig(
+                    sample_rate=22050,
+                    input_sample_rate=16000,  # For Hikvision device
+                    output_sample_rate=48000  # For Hikvision device
+                )
                 audio_manager = AudioManager(audio_config)
 
                 # Initialize and play
