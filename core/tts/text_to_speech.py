@@ -99,11 +99,26 @@ class TextToSpeech:
             logger.info(f"TTS input_data: '{text}'")
 
             # Generate speech
-            result = self.pipeline(text)
+            logger.debug(f"TTS calling CosyVoice pipeline with text: '{text}'")
+            try:
+                result = self.pipeline(text)
+                logger.debug(f"TTS pipeline returned result of type: {type(result)}")
+            except Exception as e:
+                logger.error(f"TTS pipeline call failed: {e}")
+                return None
 
             # Extract audio from result
-            if isinstance(result, dict) and 'output' in result:
-                audio_data = result['output']
+            logger.debug(f"TTS result keys: {result.keys() if isinstance(result, dict) else 'Not a dict'}")
+            if isinstance(result, dict):
+                if 'output' in result:
+                    audio_data = result['output']
+                elif 'audio' in result:
+                    audio_data = result['audio']
+                elif 'wav' in result:
+                    audio_data = result['wav']
+                else:
+                    logger.error(f"Unexpected dict result format, keys: {list(result.keys())}")
+                    return None
             elif hasattr(result, 'numpy'):
                 audio_data = result.numpy()
             elif isinstance(result, np.ndarray):
@@ -141,7 +156,9 @@ class TextToSpeech:
             True if successful, False otherwise
         """
         try:
+            logger.info(f"TTS speak_text called with: '{text}'")
             audio_data = await self.synthesize_speech(text)
+            logger.info(f"TTS synthesis result: audio_data is {'not ' if audio_data is None else ''}None")
             if audio_data is not None:
                 # Import here to avoid circular imports
                 from ..audio import AudioManager, AudioConfig
