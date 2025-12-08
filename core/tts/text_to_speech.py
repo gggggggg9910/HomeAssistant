@@ -290,8 +290,8 @@ class TextToSpeech:
                 successful_device = None
                 for device in audio_devices:
                     logger.info(f"Trying audio device: {device}")
-                result = subprocess.run(['aplay', '-D', device, '-r', '22050', '-c', '1', temp_path],
-                                      capture_output=True, timeout=10)
+                    result = subprocess.run(['aplay', '-D', device, '-r', '22050', '-c', '1', temp_path],
+                                          capture_output=True, timeout=10)
                     if result.returncode == 0:
                         logger.info(f"Successfully played audio on device: {device}")
                         successful_device = device
