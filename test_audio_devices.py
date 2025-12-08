@@ -219,7 +219,6 @@ def list_audio_devices():
                             'hw:2,0' in device_name_lower):
                             try:
                                 # Try to find the actual ALSA device index for hw:2,0
-                                import pyaudio
                                 host_api_info = audio.get_host_api_info_by_type(pyaudio.paALSA)
                                 for alsa_idx in range(host_api_info.get('deviceCount', 0)):
                                     alsa_device_info = audio.get_device_info_by_host_api_device_index(host_api_info['index'], alsa_idx)
