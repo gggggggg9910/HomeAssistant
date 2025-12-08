@@ -108,12 +108,20 @@ def list_audio_devices():
     print(f"Duplex devices: {len(duplex_devices)} - {[f'Device {i}' for i in duplex_devices]}")
     print()
 
+    # Store device info before terminating audio
+    device_infos = {}
+    for i in range(device_count):
+        try:
+            device_infos[i] = audio.get_device_info_by_index(i)
+        except:
+            device_infos[i] = {'name': f'Unknown Device {i}', 'maxInputChannels': 0, 'maxOutputChannels': 0}
+
     # Test devices individually
     print("INDIVIDUAL DEVICE TESTS:")
     print("-" * 50)
 
     for device_idx in range(device_count):
-        device_info = audio.get_device_info_by_index(device_idx)
+        device_info = device_infos[device_idx]
         name = device_info['name']
         input_ch = device_info['maxInputChannels']
         output_ch = device_info['maxOutputChannels']
@@ -207,7 +215,7 @@ def list_audio_devices():
         print(f"✓ 找到 {len(input_devices)} 个麦克风设备")
         print("  建议使用的设备索引:")
         for idx in input_devices:
-            device_info = audio.get_device_info_by_index(idx)
+            device_info = device_infos[idx]
             print(f"    input_device: {idx}  # {device_info['name']}")
 
     print()
@@ -220,7 +228,7 @@ def list_audio_devices():
         print(f"✓ 找到 {len(output_devices)} 个扬声器设备")
         print("  建议使用的设备索引:")
         for idx in output_devices:
-            device_info = audio.get_device_info_by_index(idx)
+            device_info = device_infos[idx]
             print(f"    output_device: {idx}  # {device_info['name']}")
 
     print()
