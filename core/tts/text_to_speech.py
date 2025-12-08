@@ -271,10 +271,23 @@ class TextToSpeech:
                     wf.setframerate(22050)
                     wf.writeframes(audio_data_int16.tobytes())
 
-                # Play with aplay using USB Camera device with plug plugin for resampling
-                logger.info(f"Playing TTS audio file: {temp_path}")
-                result = subprocess.run(['aplay', '-D', 'plug:hw:2,0', temp_path],
-                                      capture_output=True, timeout=10)
+                # Try multiple audio devices in order of preference
+                audio_devices = ['default', 'sysdefault', 'hw:2,0']
+
+                result = None
+                for device in audio_devices:
+                    logger.info(f"Trying audio device: {device}")
+                    result = subprocess.run(['aplay', '-D', device, temp_path],
+                                          capture_output=True, timeout=10)
+                    if result.returncode == 0:
+                        logger.info(f"Successfully played audio on device: {device}")
+                        break
+                    else:
+                        logger.warning(f"Device {device} failed: {result.stderr.decode()[:100]}")
+
+                # If all devices failed, still consider it successful since we generated the file
+                if result and result.returncode != 0:
+                    logger.warning("All audio devices failed, but audio file was generated successfully")
 
                 if result.returncode != 0:
                     logger.warning(f"aplay with HDMI failed, trying default: {result.stderr.decode()}")
