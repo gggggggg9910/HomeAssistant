@@ -44,6 +44,8 @@ def list_audio_devices():
     input_devices = []
     output_devices = []
     duplex_devices = []
+    duplex_input_devices = []  # 双工设备也算作输入设备
+    duplex_output_devices = [] # 双工设备也算作输出设备
 
     # List all devices with detailed info
     print("ALL DEVICES:")
@@ -67,6 +69,8 @@ def list_audio_devices():
             # Categorize
             if (input_ch > 0 and output_ch > 0) or (is_hikvision and input_ch > 0):
                 duplex_devices.append(i)
+                duplex_input_devices.append(i)  # 双工设备也算输入设备
+                duplex_output_devices.append(i) # 双工设备也算输出设备
                 print(f"  Type: DUPLEX (输入输出)")
                 if is_hikvision:
                     print(f"  Recommended: Input 16000Hz, Output 48000Hz (海康威视设备)")
@@ -111,8 +115,12 @@ def list_audio_devices():
     print("=" * 70)
     print("DEVICE SUMMARY:")
     print("-" * 50)
-    print(f"Input devices (microphones): {len(input_devices)} - {[f'Device {i}' for i in input_devices]}")
-    print(f"Output devices (speakers): {len(output_devices)} - {[f'Device {i}' for i in output_devices]}")
+    # Combine regular devices with duplex devices for totals
+    all_input_devices = input_devices + duplex_input_devices
+    all_output_devices = output_devices + duplex_output_devices
+
+    print(f"Input devices (microphones): {len(all_input_devices)} - {[f'Device {i}' for i in all_input_devices]}")
+    print(f"Output devices (speakers): {len(all_output_devices)} - {[f'Device {i}' for i in all_output_devices]}")
     print(f"Duplex devices: {len(duplex_devices)} - {[f'Device {i}' for i in duplex_devices]}")
     print()
 
@@ -172,7 +180,13 @@ def list_audio_devices():
             print("  - Input: Not supported")
 
         # Test output
-        if output_ch > 0:
+        # Special handling: test output even if device reports 0 output channels (for Hikvision devices)
+        device_name_lower = name.lower()
+        should_test_output = (output_ch > 0) or ('hikvision' in device_name_lower or
+                                               '2k usb camera' in device_name_lower or
+                                               'hw:2,0' in device_name_lower)
+
+        if should_test_output:
             try:
                 # Try different sample rates
                 test_rates = [16000, 44100, 48000, int(sample_rate)]
@@ -212,7 +226,7 @@ def list_audio_devices():
     print("RECOMMENDATIONS:")
     print("-" * 50)
 
-    if len(input_devices) == 0:
+    if len(all_input_devices) == 0:
         print("❌ 没有找到麦克风设备！")
         print("   • 检查麦克风是否正确连接")
         print("   • Windows: 设备管理器 → 音频输入和输出")
@@ -220,42 +234,44 @@ def list_audio_devices():
         print("   • macOS: 系统偏好设置 → 声音")
         print("   • 尝试重新插拔USB麦克风或使用蓝牙麦克风")
     else:
-        print(f"✓ 找到 {len(input_devices)} 个麦克风设备")
+        print(f"✓ 找到 {len(all_input_devices)} 个麦克风设备")
         print("  建议使用的设备索引:")
-        for idx in input_devices:
+        for idx in all_input_devices:
             device_info = device_infos[idx]
             print(f"    input_device: {idx}  # {device_info['name']}")
 
     print()
 
-    if len(output_devices) == 0:
+    if len(all_output_devices) == 0:
         print("❌ 没有找到扬声器设备！")
         print("   • 检查扬声器是否正确连接")
         print("   • 检查音频输出设置")
     else:
-        print(f"✓ 找到 {len(output_devices)} 个扬声器设备")
+        print(f"✓ 找到 {len(all_output_devices)} 个扬声器设备")
         print("  建议使用的设备索引:")
-        for idx in output_devices:
+        for idx in all_output_devices:
             device_info = device_infos[idx]
             print(f"    output_device: {idx}  # {device_info['name']}")
 
     print()
 
-    if len(input_devices) > 0 and len(output_devices) > 0:
+    if len(all_input_devices) > 0 and len(all_output_devices) > 0:
         print("✓ 麦克风和扬声器都可用！")
         print("  更新你的配置文件 config/settings.py 或 .env 文件:")
         print("  ")
         print("  # 示例配置")
-        if input_devices:
-            print(f"  audio__input_device={input_devices[0]}")
-        if output_devices:
-            print(f"  audio__output_device={output_devices[0]}")
+        if all_input_devices:
+            print(f"  audio__input_device={all_input_devices[0]}")
+        if all_output_devices:
+            print(f"  audio__output_device={all_output_devices[0]}")
         print("  ")
         print("  或者直接在 settings.py 中设置:")
         print("  input_device: int = 你的麦克风设备索引")
         print("  output_device: int = 你的扬声器设备索引")
-    else:
+    elif len(all_input_devices) == 0 or len(all_output_devices) == 0:
         print("❌ 音频设置不完整，无法正常使用语音助手")
+    else:
+        print("✓ 音频设置完整，可以正常使用语音助手！")
 
 def test_audio_recording(device_index=None, duration=3):
     """Test actual audio recording and playback."""
