@@ -246,33 +246,31 @@ class TextToSpeech:
             if len(audio_data) == 0:
                 logger.error("TTS synthesis produced empty audio")
                 return False
-                # Import here to avoid circular imports
-                from ..audio import AudioManager, AudioConfig
 
-                # Create audio manager for playback
-                audio_config = AudioConfig(
-                    sample_rate=22050,
-                    channels=1,               # Mono audio
-                    input_sample_rate=16000,  # For Hikvision device
-                    output_sample_rate=48000, # For Hikvision device
-                    input_device=0,           # Use device 0
-                    output_device=0           # Use device 0
-                )
-                audio_manager = AudioManager(audio_config)
+            # Import here to avoid circular imports
+            from ..audio import AudioManager, AudioConfig
 
-                # Initialize and play
-                if await audio_manager.initialize():
-                    logger.info(f"TTS playing audio: shape={audio_data.shape}, dtype={audio_data.dtype}, "
-                              f"sample_rate=22050, channels={audio_data.shape[1] if len(audio_data.shape) > 1 else 1}")
-                    success = await audio_manager.speak(audio_data)
-                    logger.info(f"TTS audio playback result: {success}")
-                    await audio_manager.cleanup()
-                    return success
-                else:
-                    logger.error("Failed to initialize audio manager for TTS playback")
-                    return False
+            # Create audio manager for playback
+            audio_config = AudioConfig(
+                sample_rate=22050,
+                channels=1,               # Mono audio
+                input_sample_rate=16000,  # For Hikvision device
+                output_sample_rate=48000, # For Hikvision device
+                input_device=0,           # Use device 0
+                output_device=0           # Use device 0
+            )
+            audio_manager = AudioManager(audio_config)
+
+            # Initialize and play
+            if await audio_manager.initialize():
+                logger.info(f"TTS playing audio: shape={audio_data.shape}, dtype={audio_data.dtype}, "
+                          f"sample_rate=22050, channels={audio_data.shape[1] if len(audio_data.shape) > 1 else 1}")
+                success = await audio_manager.speak(audio_data)
+                logger.info(f"TTS audio playback result: {success}")
+                await audio_manager.cleanup()
+                return success
             else:
-                logger.error("Failed to synthesize speech")
+                logger.error("Failed to initialize audio manager for TTS playback")
                 return False
 
         except Exception as e:
