@@ -81,15 +81,59 @@ class PyAudioInputInterface(AudioInputInterface):
 
         try:
             self._callback = callback
-            self.stream = self.audio.open(
-                format=pyaudio.paInt16,
-                channels=self.config.channels,
-                rate=self.config.sample_rate,
-                input=True,
-                input_device_index=self.config.input_device,
-                frames_per_buffer=self.config.chunk_size,
-                stream_callback=self._audio_callback
-            )
+
+            # 尝试使用ALSA设备名称直接访问海康威视摄像头麦克风
+            try:
+                # 首先尝试使用设备索引（如果设置了的话）
+                if self.config.input_device is not None:
+                    self.stream = self.audio.open(
+                        format=pyaudio.paInt16,
+                        channels=self.config.channels,
+                        rate=self.config.sample_rate,
+                        input=True,
+                        input_device_index=self.config.input_device,
+                        frames_per_buffer=self.config.chunk_size,
+                        stream_callback=self._audio_callback
+                    )
+                else:
+                    # 如果没有设置设备索引，尝试直接使用ALSA设备名称
+                    import pyaudio
+                    host_api_info = self.audio.get_host_api_info_by_type(pyaudio.paALSA)
+                    for i in range(host_api_info.get('deviceCount', 0)):
+                        device_info = self.audio.get_device_info_by_host_api_device_index(host_api_info['index'], i)
+                        if 'hw:2,0' in device_info.get('name', '').lower() and device_info.get('maxInputChannels', 0) > 0:
+                            self.stream = self.audio.open(
+                                format=pyaudio.paInt16,
+                                channels=self.config.channels,
+                                rate=self.config.sample_rate,
+                                input=True,
+                                input_device_index=device_info['index'],
+                                frames_per_buffer=self.config.chunk_size,
+                                stream_callback=self._audio_callback
+                            )
+                            break
+                    else:
+                        # 如果找不到匹配的设备，使用默认输入设备
+                        self.stream = self.audio.open(
+                            format=pyaudio.paInt16,
+                            channels=self.config.channels,
+                            rate=self.config.sample_rate,
+                            input=True,
+                            frames_per_buffer=self.config.chunk_size,
+                            stream_callback=self._audio_callback
+                        )
+            except Exception as e:
+                logger.warning(f"Direct device access failed, trying default: {e}")
+                # 回退到默认设备
+                self.stream = self.audio.open(
+                    format=pyaudio.paInt16,
+                    channels=self.config.channels,
+                    rate=self.config.sample_rate,
+                    input=True,
+                    frames_per_buffer=self.config.chunk_size,
+                    stream_callback=self._audio_callback
+                )
+
             self.stream.start_stream()
             self._recording = True
             logger.info("Started audio recording")
@@ -126,14 +170,52 @@ class PyAudioInputInterface(AudioInputInterface):
             num_chunks = int(duration_seconds / chunk_duration)
 
             # Create a temporary stream for recording
-            stream = self.audio.open(
-                format=pyaudio.paInt16,
-                channels=self.config.channels,
-                rate=self.config.sample_rate,
-                input=True,
-                input_device_index=self.config.input_device,
-                frames_per_buffer=self.config.chunk_size
-            )
+            try:
+                # 首先尝试使用设备索引（如果设置了的话）
+                if self.config.input_device is not None:
+                    stream = self.audio.open(
+                        format=pyaudio.paInt16,
+                        channels=self.config.channels,
+                        rate=self.config.sample_rate,
+                        input=True,
+                        input_device_index=self.config.input_device,
+                        frames_per_buffer=self.config.chunk_size
+                    )
+                else:
+                    # 如果没有设置设备索引，尝试直接使用ALSA设备名称
+                    import pyaudio
+                    host_api_info = self.audio.get_host_api_info_by_type(pyaudio.paALSA)
+                    for i in range(host_api_info.get('deviceCount', 0)):
+                        device_info = self.audio.get_device_info_by_host_api_device_index(host_api_info['index'], i)
+                        if 'hw:2,0' in device_info.get('name', '').lower() and device_info.get('maxInputChannels', 0) > 0:
+                            stream = self.audio.open(
+                                format=pyaudio.paInt16,
+                                channels=self.config.channels,
+                                rate=self.config.sample_rate,
+                                input=True,
+                                input_device_index=device_info['index'],
+                                frames_per_buffer=self.config.chunk_size
+                            )
+                            break
+                    else:
+                        # 如果找不到匹配的设备，使用默认输入设备
+                        stream = self.audio.open(
+                            format=pyaudio.paInt16,
+                            channels=self.config.channels,
+                            rate=self.config.sample_rate,
+                            input=True,
+                            frames_per_buffer=self.config.chunk_size
+                        )
+            except Exception as e:
+                logger.warning(f"Direct device access failed, trying default: {e}")
+                # 回退到默认设备
+                stream = self.audio.open(
+                    format=pyaudio.paInt16,
+                    channels=self.config.channels,
+                    rate=self.config.sample_rate,
+                    input=True,
+                    frames_per_buffer=self.config.chunk_size
+                )
 
             for _ in range(num_chunks):
                 data = stream.read(self.config.chunk_size, exception_on_overflow=False)
