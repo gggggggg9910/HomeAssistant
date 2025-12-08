@@ -383,7 +383,7 @@ class VoiceAssistantController:
     async def _speak_response(self, text: str):
         """Speak the AI response."""
         try:
-            logger.info(f"Speaking response: {text}")
+            logger.info(f"Speaking response: {text} (type: {type(text)})")
             success = await self.tts_engine.speak_text(text)
 
             if not success:

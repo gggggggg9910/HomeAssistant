@@ -91,8 +91,12 @@ class TextToSpeech:
             return None
 
         try:
+            # Debug logging
+            logger.info(f"TTS synthesize_speech called with text: '{text}' (type: {type(text)})")
+
             # Prepare input for CosyVoice2-0.5B
             input_data = {'text': text}
+            logger.info(f"TTS input_data: {input_data}")
 
             # Generate speech
             result = self.pipeline(input_data)
