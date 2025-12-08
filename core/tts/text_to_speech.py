@@ -117,26 +117,37 @@ class TextToSpeech:
                 cmd.extend(['|', 'sox', '-t', 'wav', '-', '-r', '22050', '-c', '1', temp_path])
 
                 # Generate WAV file directly with espeak-ng
+                # Ensure text is properly encoded
+                safe_text = text.encode('utf-8', errors='ignore').decode('utf-8')
+
                 cmd = [
                     'espeak-ng',
                     '-v', 'zh',      # Chinese voice
                     '-s', '180',     # Speed
                     '-a', str(int(self.config.volume * 100)),  # Amplitude (volume)
                     '-w', temp_path, # Output file
-                    text
+                    safe_text
                 ]
 
                 logger.debug(f"Running espeak-ng command: {' '.join(cmd)}")
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                try:
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
 
-                logger.debug(f"espeak-ng return code: {result.returncode}")
-                if result.stdout:
-                    logger.debug(f"espeak-ng stdout: {result.stdout[:100]}...")
-                if result.stderr:
-                    logger.debug(f"espeak-ng stderr: {result.stderr[:100]}...")
+                    logger.debug(f"espeak-ng return code: {result.returncode}")
+                    if result.stdout:
+                        logger.debug(f"espeak-ng stdout: {result.stdout[:100]}...")
+                    if result.stderr:
+                        logger.debug(f"espeak-ng stderr: {result.stderr[:100]}...")
 
-                if result.returncode != 0:
-                    logger.error(f"espeak-ng failed with return code {result.returncode}: {result.stderr}")
+                    if result.returncode != 0:
+                        logger.error(f"espeak-ng failed with return code {result.returncode}: {result.stderr}")
+                        return None
+
+                except subprocess.TimeoutExpired:
+                    logger.error("espeak-ng timed out")
+                    return None
+                except Exception as e:
+                    logger.error(f"Error running espeak-ng: {e}")
                     return None
 
                 logger.debug(f"Running command: {' '.join(cmd)}")
