@@ -188,13 +188,14 @@ class TextToSpeech:
                 audio_data = audio_data * self.config.volume
 
                 # Ensure the audio is in the correct format for playback
-                # Reshape to (samples, channels) format expected by PyAudio
-                if len(audio_data.shape) == 1:
-                    # Mono audio - add channel dimension
-                    audio_data = audio_data.reshape(-1, 1)
-                elif audio_data.shape[1] != 1:
-                    # Convert to mono if multi-channel
-                    audio_data = audio_data.mean(axis=1, keepdims=True)
+                # PyAudio expects 1D array for mono audio
+                if len(audio_data.shape) > 1:
+                    if audio_data.shape[1] == 1:
+                        # Squeeze single channel to 1D
+                        audio_data = audio_data.squeeze()
+                    else:
+                        # Convert multi-channel to mono
+                        audio_data = audio_data.mean(axis=1)
 
                 logger.debug(f"TTS synthesis successful: shape={audio_data.shape}, dtype={audio_data.dtype}, "
                            f"channels={audio_data.shape[1] if len(audio_data.shape) > 1 else 1}")
@@ -243,7 +244,8 @@ class TextToSpeech:
 
                 # Initialize and play
                 if await audio_manager.initialize():
-                    logger.info(f"TTS playing audio: shape={audio_data.shape}, dtype={audio_data.dtype}, sample_rate=22050")
+                    logger.info(f"TTS playing audio: shape={audio_data.shape}, dtype={audio_data.dtype}, "
+                              f"sample_rate=22050, channels={audio_data.shape[1] if len(audio_data.shape) > 1 else 1}")
                     success = await audio_manager.speak(audio_data)
                     logger.info(f"TTS audio playback result: {success}")
                     await audio_manager.cleanup()
