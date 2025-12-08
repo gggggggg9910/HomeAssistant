@@ -271,9 +271,9 @@ class TextToSpeech:
                     wf.setframerate(22050)
                     wf.writeframes(audio_data_int16.tobytes())
 
-                # Play with aplay using HDMI device (card 0)
+                # Play with aplay using USB Camera device (card 2)
                 logger.info(f"Playing TTS audio file: {temp_path}")
-                result = subprocess.run(['aplay', '-D', 'hw:0,0', temp_path],
+                result = subprocess.run(['aplay', '-D', 'hw:2,0', temp_path],
                                       capture_output=True, timeout=10)
 
                 if result.returncode != 0:
