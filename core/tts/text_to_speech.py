@@ -235,6 +235,7 @@ class TextToSpeech:
         """
         try:
             logger.info(f"TTS speak_text called with: '{text}'")
+            logger.info("TTS calling synthesize_speech...")
             audio_data = await self.synthesize_speech(text)
             logger.info(f"TTS synthesis result: audio_data is {'not ' if audio_data is None else ''}None")
             if audio_data is None:
