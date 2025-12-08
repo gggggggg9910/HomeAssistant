@@ -76,7 +76,7 @@ class TextToSpeech:
         return self._is_initialized
 
     async def synthesize_speech(self, text: str) -> Optional[np.ndarray]:
-        """Convert text to speech audio using CosyVoice.
+        """Convert text to speech audio using pyttsx3.
 
         Args:
             text: Text to synthesize
@@ -84,74 +84,54 @@ class TextToSpeech:
         Returns:
             Audio data as numpy array or None if failed
         """
-        if not self._is_initialized or not self.pipeline:
-            logger.error("CosyVoice TTS not initialized")
+        if not self._is_initialized or not self.engine:
+            logger.error("pyttsx3 TTS not initialized")
             return None
 
         try:
-            # Debug logging
-            logger.info(f"TTS synthesize_speech called with text: '{text}' (type: {type(text)})")
+            import tempfile
+            import wave
 
-            # Prepare input for CosyVoice2-0.5B
-            # CosyVoice2-0.5B expects text directly, not in a dictionary
-            logger.info(f"TTS input_data: '{text}'")
+            logger.debug(f"TTS synthesizing text: '{text}'")
 
-            # Generate speech - try different input formats for CosyVoice
-            logger.debug(f"TTS calling CosyVoice pipeline with text: '{text}'")
+            # Set properties
+            self.engine.setProperty('rate', 180)  # Speed
+            self.engine.setProperty('volume', self.config.volume)
 
-            # Try different input formats
-            input_data = {'text': text}
-            logger.debug(f"TTS trying input format: {input_data}")
+            # Create temporary file
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+                temp_path = temp_file.name
 
             try:
-                result = self.pipeline(input_data)
-                logger.debug(f"TTS pipeline returned result of type: {type(result)}")
-            except Exception as e:
-                logger.warning(f"Dict input failed: {e}, trying direct text input")
+                # Save speech to file
+                self.engine.save_to_file(text, temp_path)
+                self.engine.runAndWait()
+
+                # Read the WAV file and convert to numpy array
+                with wave.open(temp_path, 'rb') as wf:
+                    # Read all frames
+                    frames = wf.readframes(wf.getnframes())
+                    # Convert to numpy array
+                    audio_data = np.frombuffer(frames, dtype=np.int16).astype(np.float32)
+                    # Normalize to [-1, 1]
+                    audio_data = audio_data / 32768.0
+
+                # Apply volume
+                audio_data = audio_data * self.config.volume
+
+                logger.debug(f"TTS synthesis successful: shape={audio_data.shape}, dtype={audio_data.dtype}")
+                return audio_data
+
+            finally:
+                # Clean up temp file
+                import os
                 try:
-                    result = self.pipeline(text)
-                    logger.debug(f"TTS direct text input succeeded, result type: {type(result)}")
-                except Exception as e2:
-                    logger.error(f"Both input formats failed: {e2}")
-                    return None
-
-            # Extract audio from result
-            logger.debug(f"TTS result keys: {result.keys() if isinstance(result, dict) else 'Not a dict'}")
-            if isinstance(result, dict):
-                if 'output' in result:
-                    audio_data = result['output']
-                elif 'audio' in result:
-                    audio_data = result['audio']
-                elif 'wav' in result:
-                    audio_data = result['wav']
-                else:
-                    logger.error(f"Unexpected dict result format, keys: {list(result.keys())}")
-                    return None
-            elif hasattr(result, 'numpy'):
-                audio_data = result.numpy()
-            elif isinstance(result, np.ndarray):
-                audio_data = result
-            else:
-                logger.error(f"Unexpected result format: {type(result)}")
-                return None
-
-            # Ensure proper format
-            if audio_data.dtype != np.float32:
-                audio_data = audio_data.astype(np.float32)
-
-            # Normalize if needed
-            max_val = np.max(np.abs(audio_data))
-            if max_val > 1.0:
-                audio_data = audio_data / max_val
-
-            # Apply volume
-            audio_data = audio_data * self.config.volume
-
-            logger.info(f"Synthesized: '{text[:50]}...' -> {len(audio_data)} samples")
-            return audio_data
+                    os.unlink(temp_path)
+                except:
+                    pass
 
         except Exception as e:
-            logger.error(f"Synthesis failed: {e}")
+            logger.error(f"Error during speech synthesis: {e}")
             return None
 
     async def speak_text(self, text: str) -> bool:
