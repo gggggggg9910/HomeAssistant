@@ -89,7 +89,7 @@ class PyAudioInputInterface(AudioInputInterface):
                     self.stream = self.audio.open(
                         format=pyaudio.paInt16,
                         channels=self.config.channels,
-                        rate=self.config.sample_rate,
+                        rate=self.config.input_sample_rate,  # 使用输入采样率
                         input=True,
                         input_device_index=self.config.input_device,
                         frames_per_buffer=self.config.chunk_size,
@@ -105,7 +105,7 @@ class PyAudioInputInterface(AudioInputInterface):
                             self.stream = self.audio.open(
                                 format=pyaudio.paInt16,
                                 channels=self.config.channels,
-                                rate=self.config.sample_rate,
+                                rate=self.config.input_sample_rate,  # 使用输入采样率
                                 input=True,
                                 input_device_index=device_info['index'],
                                 frames_per_buffer=self.config.chunk_size,
@@ -117,7 +117,7 @@ class PyAudioInputInterface(AudioInputInterface):
                         self.stream = self.audio.open(
                             format=pyaudio.paInt16,
                             channels=self.config.channels,
-                            rate=self.config.sample_rate,
+                            rate=self.config.input_sample_rate,  # 使用输入采样率
                             input=True,
                             frames_per_buffer=self.config.chunk_size,
                             stream_callback=self._audio_callback
@@ -128,7 +128,7 @@ class PyAudioInputInterface(AudioInputInterface):
                 self.stream = self.audio.open(
                     format=pyaudio.paInt16,
                     channels=self.config.channels,
-                    rate=self.config.sample_rate,
+                    rate=self.config.input_sample_rate,  # 使用输入采样率
                     input=True,
                     frames_per_buffer=self.config.chunk_size,
                     stream_callback=self._audio_callback
@@ -166,7 +166,7 @@ class PyAudioInputInterface(AudioInputInterface):
 
         try:
             frames = []
-            chunk_duration = self.config.chunk_size / self.config.sample_rate
+            chunk_duration = self.config.chunk_size / self.config.input_sample_rate  # 使用输入采样率
             num_chunks = int(duration_seconds / chunk_duration)
 
             # Create a temporary stream for recording
@@ -176,7 +176,7 @@ class PyAudioInputInterface(AudioInputInterface):
                     stream = self.audio.open(
                         format=pyaudio.paInt16,
                         channels=self.config.channels,
-                        rate=self.config.sample_rate,
+                        rate=self.config.input_sample_rate,  # 使用输入采样率
                         input=True,
                         input_device_index=self.config.input_device,
                         frames_per_buffer=self.config.chunk_size
@@ -191,7 +191,7 @@ class PyAudioInputInterface(AudioInputInterface):
                             stream = self.audio.open(
                                 format=pyaudio.paInt16,
                                 channels=self.config.channels,
-                                rate=self.config.sample_rate,
+                                rate=self.config.input_sample_rate,  # 使用输入采样率
                                 input=True,
                                 input_device_index=device_info['index'],
                                 frames_per_buffer=self.config.chunk_size
@@ -202,7 +202,7 @@ class PyAudioInputInterface(AudioInputInterface):
                         stream = self.audio.open(
                             format=pyaudio.paInt16,
                             channels=self.config.channels,
-                            rate=self.config.sample_rate,
+                            rate=self.config.input_sample_rate,  # 使用输入采样率
                             input=True,
                             frames_per_buffer=self.config.chunk_size
                         )
@@ -212,7 +212,7 @@ class PyAudioInputInterface(AudioInputInterface):
                 stream = self.audio.open(
                     format=pyaudio.paInt16,
                     channels=self.config.channels,
-                    rate=self.config.sample_rate,
+                    rate=self.config.input_sample_rate,  # 使用输入采样率
                     input=True,
                     frames_per_buffer=self.config.chunk_size
                 )
@@ -286,7 +286,7 @@ class PyAudioOutputInterface(AudioOutputInterface):
             self.stream = self.audio.open(
                 format=pyaudio.paInt16,
                 channels=self.config.channels,
-                rate=self.config.sample_rate,
+                rate=self.config.output_sample_rate,  # 使用输出采样率
                 output=True,
                 output_device_index=self.config.output_device
             )

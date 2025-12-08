@@ -54,7 +54,9 @@ class VoiceAssistantController:
             try:
                 from .audio import AudioManager, AudioConfig
                 audio_config = AudioConfig(
-                    sample_rate=self.config.audio.sample_rate,
+                    sample_rate=self.config.audio.sample_rate,  # 向后兼容
+                    input_sample_rate=self.config.audio.input_sample_rate,
+                    output_sample_rate=self.config.audio.output_sample_rate,
                     channels=self.config.audio.channels,
                     chunk_size=self.config.audio.chunk_size,
                     input_device=self.config.audio.input_device,

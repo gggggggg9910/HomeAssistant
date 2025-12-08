@@ -17,12 +17,18 @@ except ImportError:
 
 class AudioSettings(BaseSettings):
     """Audio configuration settings."""
+    # 统一的采样率（向后兼容）
     sample_rate: int = 16000
+    
+    # 分别的输入输出采样率（优先使用这些）
+    input_sample_rate: int = 16000    # 麦克风采样率
+    output_sample_rate: int = 48000   # 扬声器采样率
+    
     channels: int = 1
     chunk_size: int = 1024
-    input_device: Optional[int] = None    # 麦克风设备索引，使用环境变量AUDIODEV设置
-    output_device: Optional[int] = None   # 扬声器设备索引，使用环境变量AUDIODEV设置
-    enable_input: bool = True             # 重新启用麦克风输入（海康威视设备确实有麦克风）
+    input_device: Optional[int] = None    # 麦克风设备索引
+    output_device: Optional[int] = None   # 扬声器设备索引
+    enable_input: bool = True             # 启用麦克风输入
     enable_output: bool = True            # 启用扬声器输出
 
     model_config = {

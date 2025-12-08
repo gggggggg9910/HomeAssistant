@@ -15,7 +15,9 @@ class AudioConfig:
     """Audio configuration parameters."""
     def __init__(
         self,
-        sample_rate: int = 16000,
+        sample_rate: int = 16000,          # 向后兼容
+        input_sample_rate: int = 16000,    # 输入采样率
+        output_sample_rate: int = 48000,   # 输出采样率
         channels: int = 1,
         chunk_size: int = 1024,
         input_device: Optional[int] = None,
@@ -24,7 +26,10 @@ class AudioConfig:
         enable_input: bool = True,
         enable_output: bool = True
     ):
+        # 为了向后兼容，如果没有指定input/output_sample_rate，使用sample_rate
         self.sample_rate = sample_rate
+        self.input_sample_rate = input_sample_rate or sample_rate
+        self.output_sample_rate = output_sample_rate or sample_rate
         self.channels = channels
         self.chunk_size = chunk_size
         self.input_device = input_device

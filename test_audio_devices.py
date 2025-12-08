@@ -65,6 +65,7 @@ def list_audio_devices():
             if input_ch > 0 and output_ch > 0:
                 duplex_devices.append(i)
                 print(f"  Type: DUPLEX (输入输出)")
+                print(f"  Recommended: Input 16000Hz, Output 48000Hz (for Hikvision devices)")
             elif input_ch > 0:
                 input_devices.append(i)
                 print(f"  Type: INPUT ONLY (仅输入 - 麦克风)")
