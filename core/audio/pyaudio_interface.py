@@ -283,12 +283,43 @@ class PyAudioOutputInterface(AudioOutputInterface):
             if len(audio_data.shape) == 1:
                 audio_data = audio_data.reshape(-1, self.config.channels)
 
+            # Special handling for Hikvision devices that may report 0 output channels but actually support output
+            device_index = self.config.output_device
+            if device_index is not None:
+                try:
+                    device_info = self.audio.get_device_info_by_index(device_index)
+                    device_name = device_info.get('name', '').lower()
+                    max_output_ch = device_info.get('maxOutputChannels', 0)
+
+                    # Check if this is a Hikvision device that should support output
+                    is_hikvision = ('hikvision' in device_name or
+                                  '2k usb camera' in device_name or
+                                  'hw:2,0' in device_name)
+
+                    if is_hikvision and max_output_ch == 0:
+                        logger.info(f"Hikvision device detected, forcing output support despite PyAudio reporting {max_output_ch} channels")
+                        # Try to open with explicit ALSA device name
+                        try:
+                            # Try hw:2,0 directly
+                            import pyaudio
+                            host_api_info = self.audio.get_host_api_info_by_type(pyaudio.paALSA)
+                            for i in range(host_api_info.get('deviceCount', 0)):
+                                dev_info = self.audio.get_device_info_by_host_api_device_index(host_api_info['index'], i)
+                                if 'hw:2,0' in dev_info.get('name', '').lower():
+                                    device_index = dev_info['index']
+                                    logger.info(f"Using ALSA device index {device_index} for Hikvision output")
+                                    break
+                        except:
+                            pass
+                except Exception as e:
+                    logger.warning(f"Error checking device info: {e}")
+
             self.stream = self.audio.open(
                 format=pyaudio.paInt16,
                 channels=self.config.channels,
                 rate=self.config.output_sample_rate,  # 使用输出采样率
                 output=True,
-                output_device_index=self.config.output_device
+                output_device_index=device_index
             )
 
             self._playing = True

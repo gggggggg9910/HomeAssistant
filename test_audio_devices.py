@@ -61,11 +61,18 @@ def list_audio_devices():
             print(f"  Default Sample Rate: {sample_rate} Hz")
             print(f"  Host API: {device_info.get('hostApi', 'Unknown')}")
 
+            # Special handling for Hikvision devices - they may report 0 output channels but actually support output
+            is_hikvision = 'hikvision' in name.lower() or '2k usb camera' in name.lower() or 'hw:2,0' in name.lower()
+
             # Categorize
-            if input_ch > 0 and output_ch > 0:
+            if (input_ch > 0 and output_ch > 0) or (is_hikvision and input_ch > 0):
                 duplex_devices.append(i)
                 print(f"  Type: DUPLEX (输入输出)")
-                print(f"  Recommended: Input 16000Hz, Output 48000Hz (for Hikvision devices)")
+                if is_hikvision:
+                    print(f"  Recommended: Input 16000Hz, Output 48000Hz (海康威视设备)")
+                    print(f"  Note: Device reports {output_ch} output channels but actually supports output")
+                else:
+                    print(f"  Recommended: Input 16000Hz, Output 48000Hz")
             elif input_ch > 0:
                 input_devices.append(i)
                 print(f"  Type: INPUT ONLY (仅输入 - 麦克风)")
