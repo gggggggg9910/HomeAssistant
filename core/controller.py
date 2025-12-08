@@ -367,6 +367,9 @@ class VoiceAssistantController:
 
             # Create audio callback
             def audio_callback(audio_chunk: np.ndarray):
+                # Debug: log when audio chunks are received during speech recognition
+                if len(self._speech_audio_buffer) == 0:
+                    logger.info(f"ASR started receiving audio chunks (first chunk shape: {audio_chunk.shape})")
                 self._speech_audio_buffer.append(audio_chunk.copy())
                 self.speech_recognizer.add_audio_chunk(audio_chunk)
 
