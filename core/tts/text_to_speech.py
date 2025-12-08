@@ -91,38 +91,49 @@ class TextToSpeech:
         try:
             import tempfile
             import wave
+            import subprocess
+            import os
 
             logger.debug(f"TTS synthesizing text: '{text}'")
 
-            # Set properties
-            self.engine.setProperty('rate', 180)  # Speed
-            self.engine.setProperty('volume', self.config.volume)
-
+            # Try using espeak directly to generate WAV file
             # Create temporary file
             with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
                 temp_path = temp_file.name
 
             try:
-                # Save speech to file
-                logger.debug(f"Saving speech to temporary file: {temp_path}")
-                self.engine.save_to_file(text, temp_path)
-                self.engine.runAndWait()
+                # Use espeak directly instead of pyttsx3
+                logger.debug(f"Using espeak to generate WAV file: {temp_path}")
+                cmd = [
+                    'espeak-ng',
+                    '-v', 'zh',  # Chinese voice
+                    '-s', '180',  # Speed
+                    '-a', str(int(self.config.volume * 100)),  # Amplitude (volume)
+                    '-w', temp_path,  # Output file
+                    text
+                ]
+
+                logger.debug(f"Running command: {' '.join(cmd)}")
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+
+                if result.returncode != 0:
+                    logger.error(f"espeak-ng failed: {result.stderr}")
+                    return None
 
                 # Check if file was created and has content
-                import os
                 if not os.path.exists(temp_path):
-                    logger.error("Temporary WAV file was not created")
+                    logger.error("espeak-ng did not create WAV file")
                     return None
 
                 file_size = os.path.getsize(temp_path)
-                logger.debug(f"WAV file created, size: {file_size} bytes")
+                logger.debug(f"espeak-ng WAV file created, size: {file_size} bytes")
 
                 if file_size == 0:
-                    logger.error("WAV file is empty")
+                    logger.error("espeak-ng generated empty WAV file")
                     return None
 
                 # Read the WAV file and convert to numpy array
-                logger.debug("Reading WAV file...")
+                logger.debug("Reading espeak-ng WAV file...")
                 with wave.open(temp_path, 'rb') as wf:
                     channels = wf.getnchannels()
                     sample_width = wf.getsampwidth()
@@ -161,7 +172,6 @@ class TextToSpeech:
 
             finally:
                 # Clean up temp file
-                import os
                 try:
                     if os.path.exists(temp_path):
                         os.unlink(temp_path)
