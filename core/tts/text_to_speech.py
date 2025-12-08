@@ -247,30 +247,45 @@ class TextToSpeech:
                 logger.error("TTS synthesis produced empty audio")
                 return False
 
-            # Import here to avoid circular imports
-            from ..audio import AudioManager, AudioConfig
+            # Use aplay to play the audio directly
+            import tempfile
+            import os
+            import subprocess
+            import wave
+            import numpy as np
 
-            # Create audio manager for playback
-            audio_config = AudioConfig(
-                sample_rate=22050,
-                channels=1,               # Mono audio
-                input_sample_rate=16000,  # For Hikvision device
-                output_sample_rate=48000, # For Hikvision device
-                input_device=0,           # Use device 0
-                output_device=0           # Use device 0
-            )
-            audio_manager = AudioManager(audio_config)
+            try:
+                # Save audio to temporary WAV file
+                with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+                    temp_path = temp_file.name
 
-            # Initialize and play
-            if await audio_manager.initialize():
-                logger.info(f"TTS playing audio: shape={audio_data.shape}, dtype={audio_data.dtype}, "
-                          f"sample_rate=22050, channels={audio_data.shape[1] if len(audio_data.shape) > 1 else 1}")
-                success = await audio_manager.speak(audio_data)
-                logger.info(f"TTS audio playback result: {success}")
-                await audio_manager.cleanup()
+                # Convert float32 audio back to int16 and save as WAV
+                if audio_data.dtype != np.int16:
+                    audio_data_int16 = (audio_data * 32767).astype(np.int16)
+                else:
+                    audio_data_int16 = audio_data
+
+                with wave.open(temp_path, 'wb') as wf:
+                    wf.setnchannels(1)  # Mono
+                    wf.setsampwidth(2)  # 16-bit
+                    wf.setframerate(22050)
+                    wf.writeframes(audio_data_int16.tobytes())
+
+                # Play with aplay using the Hikvision device
+                logger.info(f"Playing TTS audio file: {temp_path}")
+                result = subprocess.run(['aplay', '-D', 'hw:2,0', temp_path],
+                                      capture_output=True, timeout=10)
+
+                success = result.returncode == 0
+                if success:
+                    logger.info("TTS audio playback successful")
+                else:
+                    logger.error(f"TTS audio playback failed: {result.stderr.decode()}")
+
                 return success
-            else:
-                logger.error("Failed to initialize audio manager for TTS playback")
+
+            except Exception as e:
+                logger.error(f"Error in TTS audio playback: {e}")
                 return False
 
         except Exception as e:
