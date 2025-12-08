@@ -94,7 +94,7 @@ class TextToSpeech:
             import subprocess
             import os
 
-            logger.debug(f"TTS synthesizing text: '{text}'")
+            logger.info(f"TTS synthesizing text: '{text}'")
 
             # Try using espeak directly to generate WAV file
             # Create temporary file
