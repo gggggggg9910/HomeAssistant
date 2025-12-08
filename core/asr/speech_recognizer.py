@@ -285,21 +285,14 @@ class SpeechRecognizer:
                 if len(self._audio_buffer) % 20 == 0:
                     logger.debug(f"ASR buffer size: {len(self._audio_buffer)} chunks")
 
-        # Try to add synchronously first, fallback to async
-        try:
-            loop = asyncio.get_running_loop()
-            if loop.is_running():
-                # Create task but don't wait - just ensure it's scheduled
-                asyncio.create_task(_add_chunk())
-            else:
-                # No running loop, add synchronously
-                import asyncio
-                asyncio.run(_add_chunk())
-        except RuntimeError:
-            # No running loop, add synchronously
-            self._audio_buffer.append(audio_data.copy())
-            if len(self._audio_buffer) > 50:
-                self._audio_buffer.pop(0)
+        # Add synchronously to avoid asyncio complications
+        self._audio_buffer.append(audio_data.copy())
+        # Keep buffer size reasonable for SenseVoice
+        if len(self._audio_buffer) > 50:  # SenseVoice can handle longer audio
+            self._audio_buffer.pop(0)
+        # Debug: Log buffer status occasionally
+        if len(self._audio_buffer) % 20 == 0:
+            logger.debug(f"ASR buffer size: {len(self._audio_buffer)} chunks")
 
     def stop_recognition(self):
         """Stop continuous speech recognition."""
