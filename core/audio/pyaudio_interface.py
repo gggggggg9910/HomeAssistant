@@ -273,6 +273,7 @@ class PyAudioOutputInterface(AudioOutputInterface):
     def _play_audio_thread(self, audio_data: np.ndarray):
         """Thread function for playing audio."""
         try:
+            logger.debug(f"Starting audio playback thread: shape={audio_data.shape}, dtype={audio_data.dtype}")
             # Convert float32 back to int16 if needed
             if audio_data.dtype == np.float32:
                 audio_data = (audio_data * 32767).astype(np.int16)
@@ -325,12 +326,15 @@ class PyAudioOutputInterface(AudioOutputInterface):
 
             # Write audio data in chunks
             chunk_size = self.config.chunk_size
+            logger.debug(f"Writing audio data in chunks of {chunk_size}")
             for i in range(0, len(audio_data), chunk_size):
                 if self._stop_event.is_set():
+                    logger.debug("Playback stopped by stop event")
                     break
                 chunk = audio_data[i:i + chunk_size]
                 self.stream.write(chunk.tobytes())
 
+            logger.debug("Audio playback finished, closing stream")
             self.stream.close()
             self.stream = None
 
@@ -355,10 +359,22 @@ class PyAudioOutputInterface(AudioOutputInterface):
             play_thread.start()
 
             # Wait for playback to complete
+            timeout = 10.0  # Max 10 seconds for playback
+            start_time = asyncio.get_event_loop().time()
             while self._playing and play_thread.is_alive():
                 await asyncio.sleep(0.1)
+                if asyncio.get_event_loop().time() - start_time > timeout:
+                    logger.error("Audio playback timeout")
+                    self.stop_playback()
+                    return False
 
-            return True
+            # Check if playback completed successfully
+            if play_thread.is_alive():
+                logger.warning("Playback thread still alive after completion")
+            else:
+                logger.info("Audio playback completed successfully")
+
+            return not play_thread.is_alive() or not self._playing
 
         except Exception as e:
             logger.error(f"Failed to play audio synchronously: {e}")
