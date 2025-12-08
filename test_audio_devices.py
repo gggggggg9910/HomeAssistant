@@ -72,7 +72,7 @@ def list_audio_devices():
                 output_devices.append(i)
                 print(f"  Type: OUTPUT ONLY (仅输出 - 扬声器)")
             else:
-                print("  Type: UNKNOWN (未知类型)"
+                print("  Type: UNKNOWN (未知类型)")
             print()
         except Exception as e:
             print(f"Device {i}: Error getting info - {e}")
@@ -205,7 +205,8 @@ def list_audio_devices():
         print("   • 尝试重新插拔USB麦克风或使用蓝牙麦克风")
     else:
         print(f"✓ 找到 {len(input_devices)} 个麦克风设备")
-        print("  建议使用的设备索引:"        for idx in input_devices:
+        print("  建议使用的设备索引:")
+        for idx in input_devices:
             device_info = audio.get_device_info_by_index(idx)
             print(f"    input_device: {idx}  # {device_info['name']}")
 
@@ -217,7 +218,8 @@ def list_audio_devices():
         print("   • 检查音频输出设置")
     else:
         print(f"✓ 找到 {len(output_devices)} 个扬声器设备")
-        print("  建议使用的设备索引:"        for idx in output_devices:
+        print("  建议使用的设备索引:")
+        for idx in output_devices:
             device_info = audio.get_device_info_by_index(idx)
             print(f"    output_device: {idx}  # {device_info['name']}")
 
