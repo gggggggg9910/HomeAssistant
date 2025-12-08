@@ -49,88 +49,130 @@ class VoiceAssistantController:
         try:
             logger.info("Initializing voice assistant controller...")
 
-            # Initialize audio manager
-            from .audio import AudioManager, AudioConfig
-            audio_config = AudioConfig(
-                sample_rate=self.config.audio.sample_rate,
-                channels=self.config.audio.channels,
-                chunk_size=self.config.audio.chunk_size,
-                input_device=self.config.audio.input_device,
-                output_device=self.config.audio.output_device,
-                enable_input=self.config.audio.enable_input,
-                enable_output=self.config.audio.enable_output
-            )
-            self.audio_manager = AudioManager(audio_config)
-            if not await self.audio_manager.initialize():
-                logger.error("Failed to initialize audio manager")
-                return False
+            # Initialize audio manager (optional - allows system to work without audio)
+            audio_initialized = False
+            try:
+                from .audio import AudioManager, AudioConfig
+                audio_config = AudioConfig(
+                    sample_rate=self.config.audio.sample_rate,
+                    channels=self.config.audio.channels,
+                    chunk_size=self.config.audio.chunk_size,
+                    input_device=self.config.audio.input_device,
+                    output_device=self.config.audio.output_device,
+                    enable_input=self.config.audio.enable_input,
+                    enable_output=self.config.audio.enable_output
+                )
+                self.audio_manager = AudioManager(audio_config)
+                if await self.audio_manager.initialize():
+                    audio_initialized = True
+                    logger.info("Audio manager initialized successfully")
+                else:
+                    logger.warning("Audio manager initialization failed - voice features will be disabled")
+                    self.audio_manager = None
+            except Exception as e:
+                logger.warning(f"Audio initialization failed: {e} - voice features will be disabled")
+                self.audio_manager = None
 
-            # Initialize keyword spotter
-            from .kws import KeywordSpotter, KWSConfig
-            kws_config = KWSConfig(
-                model_path=str(self.config.kws.model_path),
-                keyword=self.config.kws.keyword,
-                threshold=self.config.kws.threshold,
-                max_wait_seconds=self.config.kws.max_wait_seconds,
-                sample_rate=self.config.audio.sample_rate
-            )
-            self.keyword_spotter = KeywordSpotter(kws_config)
-            if not await self.keyword_spotter.initialize():
-                logger.error("Failed to initialize keyword spotter")
-                return False
+            # Initialize keyword spotter (only if audio is available)
+            if audio_initialized:
+                try:
+                    from .kws import KeywordSpotter, KWSConfig
+                    kws_config = KWSConfig(
+                        model_path=str(self.config.kws.model_path),
+                        keyword=self.config.kws.keyword,
+                        threshold=self.config.kws.threshold,
+                        max_wait_seconds=self.config.kws.max_wait_seconds,
+                        sample_rate=self.config.audio.sample_rate
+                    )
+                    self.keyword_spotter = KeywordSpotter(kws_config)
+                    if not await self.keyword_spotter.initialize():
+                        logger.warning("Failed to initialize keyword spotter - keyword detection will be disabled")
+                        self.keyword_spotter = None
+                except Exception as e:
+                    logger.warning(f"Keyword spotter initialization failed: {e} - keyword detection will be disabled")
+                    self.keyword_spotter = None
 
-            # Initialize speech recognizer
-            from .asr import SpeechRecognizer, ASRConfig
-            asr_config = ASRConfig(
-                model_path=str(self.config.asr.model_path),
-                language=self.config.asr.language,
-                max_wait_seconds=self.config.asr.max_wait_seconds,
-                sample_rate=self.config.audio.sample_rate,
-                disable_update=self.config.asr.disable_update
-            )
-            self.speech_recognizer = SpeechRecognizer(asr_config)
-            if not await self.speech_recognizer.initialize():
-                logger.warning("Failed to initialize speech recognizer - speech recognition will be disabled")
-                logger.warning("This may be due to insufficient memory. Consider using a smaller model or disabling ASR.")
-                self.speech_recognizer = None  # Allow system to continue without ASR
-
-            # Initialize TTS engine
-            from .tts import TextToSpeech, TTSConfig
-            tts_config = TTSConfig(
-                model_id=self.config.tts.model_id,
-                model_path=self.config.tts.model_path if self.config.tts.model_path else None,
-                voice=self.config.tts.voice,
-                speed=self.config.tts.speed,
-                volume=self.config.tts.volume
-            )
-            self.tts_engine = TextToSpeech(tts_config)
-            if not await self.tts_engine.initialize():
-                logger.error("Failed to initialize TTS engine")
-                return False
-
-            # Initialize LLM client
-            from .llm import LLMClient, LLMConfig
-            llm_config = LLMConfig(
-                api_key=self.config.llm.api_key,
-                base_url=self.config.llm.base_url,
-                model=self.config.llm.model,
-                temperature=self.config.llm.temperature,
-                max_tokens=self.config.llm.max_tokens,
-                timeout=self.config.llm.timeout,
-                use_local=self.config.llm.use_local,
-                system_prompt="你是一个智能家居助手，可以帮助用户处理各种任务。请用中文回答用户的问题，保持简洁友好的语气。"
-            )
-            self.llm_client = LLMClient(llm_config)
-            if not await self.llm_client.initialize():
-                logger.warning("Failed to initialize LLM client - LLM features will be disabled")
-                logger.warning("To enable LLM, configure DASHSCOPE_API_KEY or set LLM_USE_LOCAL=true")
-                self.llm_client = None  # Disable LLM functionality
+                # Initialize speech recognizer (only if audio is available)
+                try:
+                    from .asr import SpeechRecognizer, ASRConfig
+                    asr_config = ASRConfig(
+                        model_path=str(self.config.asr.model_path),
+                        language=self.config.asr.language,
+                        max_wait_seconds=self.config.asr.max_wait_seconds,
+                        sample_rate=self.config.audio.sample_rate,
+                        disable_update=self.config.asr.disable_update
+                    )
+                    self.speech_recognizer = SpeechRecognizer(asr_config)
+                    if not await self.speech_recognizer.initialize():
+                        logger.warning("Failed to initialize speech recognizer - speech recognition will be disabled")
+                        self.speech_recognizer = None
+                except Exception as e:
+                    logger.warning(f"Speech recognizer initialization failed: {e} - speech recognition will be disabled")
+                    self.speech_recognizer = None
             else:
-                # Test LLM connection
-                if not await self.llm_client.test_connection():
-                    logger.warning("LLM API connection test failed, but continuing...")
+                logger.info("Skipping voice-related components (audio not available)")
+                self.keyword_spotter = None
+                self.speech_recognizer = None
+
+            # Initialize TTS engine (always try to initialize)
+            try:
+                from .tts import TextToSpeech, TTSConfig
+                tts_config = TTSConfig(
+                    model_id=self.config.tts.model_id,
+                    model_path=self.config.tts.model_path if self.config.tts.model_path else None,
+                    voice=self.config.tts.voice,
+                    speed=self.config.tts.speed,
+                    volume=self.config.tts.volume
+                )
+                self.tts_engine = TextToSpeech(tts_config)
+                if not await self.tts_engine.initialize():
+                    logger.error("Failed to initialize TTS engine")
+                    return False
+                else:
+                    logger.info("TTS engine initialized successfully")
+            except Exception as e:
+                logger.error(f"TTS engine initialization failed: {e}")
+                return False
+
+            # Initialize LLM client (optional)
+            try:
+                from .llm import LLMClient, LLMConfig
+                llm_config = LLMConfig(
+                    api_key=self.config.llm.api_key,
+                    base_url=self.config.llm.base_url,
+                    model=self.config.llm.model,
+                    temperature=self.config.llm.temperature,
+                    max_tokens=self.config.llm.max_tokens,
+                    timeout=self.config.llm.timeout,
+                    use_local=self.config.llm.use_local,
+                    system_prompt="你是一个智能家居助手，可以帮助用户处理各种任务。请用中文回答用户的问题，保持简洁友好的语气。"
+                )
+                self.llm_client = LLMClient(llm_config)
+                if not await self.llm_client.initialize():
+                    logger.warning("Failed to initialize LLM client - LLM features will be disabled")
+                    self.llm_client = None
+                else:
+                    # Test LLM connection
+                    if not await self.llm_client.test_connection():
+                        logger.warning("LLM API connection test failed, but continuing...")
+            except Exception as e:
+                logger.warning(f"LLM client initialization failed: {e} - LLM features will be disabled")
+                self.llm_client = None
 
             logger.info("Voice assistant controller initialized successfully")
+            logger.info("Available features:")
+            if audio_initialized:
+                logger.info("  ✓ Audio input/output")
+                logger.info("  ✓ Keyword spotting")
+                logger.info("  ✓ Speech recognition")
+            else:
+                logger.info("  ✗ Audio input/output (disabled)")
+            logger.info("  ✓ Text-to-speech")
+            if self.llm_client:
+                logger.info("  ✓ LLM integration")
+            else:
+                logger.info("  ✗ LLM integration (disabled)")
+
             return True
 
         except Exception as e:
