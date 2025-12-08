@@ -20,10 +20,10 @@ class AudioSettings(BaseSettings):
     sample_rate: int = 16000
     channels: int = 1
     chunk_size: int = 1024
-    input_device: Optional[int] = None
-    output_device: Optional[int] = None
-    enable_input: bool = True  # Enable audio input (microphone)
-    enable_output: bool = True  # Enable audio output (speakers)
+    input_device: Optional[int] = None  # 麦克风设备索引，None表示使用默认设备
+    output_device: Optional[int] = 0     # 扬声器设备索引，设置为0使用USB摄像头扬声器
+    enable_input: bool = False           # 暂时禁用麦克风输入（因为没有麦克风）
+    enable_output: bool = True           # 启用扬声器输出
 
     model_config = {
         "extra": "allow"
