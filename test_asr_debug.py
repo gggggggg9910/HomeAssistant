@@ -75,7 +75,7 @@ async def test_sensevoice_recognition():
     result = await asr.recognize_speech(audio_data)
     end_time = time.time()
 
-    print(".2f"
+    print(f"🔍 识别耗时: {end_time - start_time:.2f}秒")
     if result:
         print(f"✅ 识别结果: '{result}'")
     else:
