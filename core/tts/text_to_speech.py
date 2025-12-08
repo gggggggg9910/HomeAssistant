@@ -109,7 +109,7 @@ class TextToSpeech:
                         engine = pyttsx3.init()
 
                         # Configure voice properties
-                        engine.setProperty('rate', 180)  # Speed
+                        engine.setProperty('rate', 150)  # Speed (reduced for better quality)
                         engine.setProperty('volume', self.config.volume)
 
                         # Try to find Chinese voice
@@ -183,6 +183,17 @@ class TextToSpeech:
             # Ensure text is properly encoded
             safe_text = text.encode('utf-8', errors='ignore').decode('utf-8')
 
+            cmd = [
+                'espeak-ng',
+                '-v', 'zh',      # Chinese voice
+                '-s', '120',     # Speed (reduced for better clarity)
+                '-a', str(int(self.config.volume * 100)),  # Amplitude (volume)
+                '--stdout'        # Output to stdout for sox processing
+            ]
+            cmd.append(safe_text)
+            cmd.extend(['|', 'sox', '-t', 'wav', '-', '-r', '22050', '-c', '1', output_path])
+
+            # For direct file output, use this simpler command
             cmd = [
                 'espeak-ng',
                 '-v', 'zh',      # Chinese voice
@@ -279,8 +290,8 @@ class TextToSpeech:
                 successful_device = None
                 for device in audio_devices:
                     logger.info(f"Trying audio device: {device}")
-                    result = subprocess.run(['aplay', '-D', device, temp_path],
-                                          capture_output=True, timeout=10)
+                result = subprocess.run(['aplay', '-D', device, '-r', '22050', '-c', '1', temp_path],
+                                      capture_output=True, timeout=10)
                     if result.returncode == 0:
                         logger.info(f"Successfully played audio on device: {device}")
                         successful_device = device
