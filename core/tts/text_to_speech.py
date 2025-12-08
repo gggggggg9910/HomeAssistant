@@ -103,15 +103,35 @@ class TextToSpeech:
 
             try:
                 # Use espeak directly instead of pyttsx3
-                logger.debug(f"Using espeak to generate WAV file: {temp_path}")
+                logger.debug(f"Using espeak-ng to generate WAV file: {temp_path}")
                 cmd = [
                     'espeak-ng',
-                    '-v', 'zh',  # Chinese voice
-                    '-s', '180',  # Speed
+                    '-v', 'zh',      # Chinese voice
+                    '-s', '180',     # Speed
                     '-a', str(int(self.config.volume * 100)),  # Amplitude (volume)
-                    '-w', temp_path,  # Output file
+                    '--stdout'       # Output to stdout instead of file
+                ]
+
+                # Add text as last argument
+                cmd.append(text)
+                cmd.extend(['|', 'sox', '-t', 'wav', '-', '-r', '22050', '-c', '1', temp_path])
+
+                # Generate WAV file directly with espeak-ng
+                cmd = [
+                    'espeak-ng',
+                    '-v', 'zh',      # Chinese voice
+                    '-s', '180',     # Speed
+                    '-a', str(int(self.config.volume * 100)),  # Amplitude (volume)
+                    '-w', temp_path, # Output file
                     text
                 ]
+
+                logger.debug(f"Running espeak-ng command: {' '.join(cmd)}")
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+
+                if result.returncode != 0:
+                    logger.error(f"espeak-ng failed: {result.stderr}")
+                    return None
 
                 logger.debug(f"Running command: {' '.join(cmd)}")
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
@@ -167,7 +187,17 @@ class TextToSpeech:
                 # Apply volume
                 audio_data = audio_data * self.config.volume
 
-                logger.debug(f"TTS synthesis successful: shape={audio_data.shape}, dtype={audio_data.dtype}")
+                # Ensure the audio is in the correct format for playback
+                # Reshape to (samples, channels) format expected by PyAudio
+                if len(audio_data.shape) == 1:
+                    # Mono audio - add channel dimension
+                    audio_data = audio_data.reshape(-1, 1)
+                elif audio_data.shape[1] != 1:
+                    # Convert to mono if multi-channel
+                    audio_data = audio_data.mean(axis=1, keepdims=True)
+
+                logger.debug(f"TTS synthesis successful: shape={audio_data.shape}, dtype={audio_data.dtype}, "
+                           f"channels={audio_data.shape[1] if len(audio_data.shape) > 1 else 1}")
                 return audio_data
 
             finally:
@@ -203,6 +233,7 @@ class TextToSpeech:
                 # Create audio manager for playback
                 audio_config = AudioConfig(
                     sample_rate=22050,
+                    channels=1,               # Mono audio
                     input_sample_rate=16000,  # For Hikvision device
                     output_sample_rate=48000, # For Hikvision device
                     input_device=0,           # Use device 0
