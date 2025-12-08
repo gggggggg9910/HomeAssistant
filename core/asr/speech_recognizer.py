@@ -232,7 +232,8 @@ class SpeechRecognizer:
 
                 # Check for buffered audio
                 async with self._buffer_lock:
-                    if self._audio_buffer:
+                    # Collect all available audio chunks
+                    while self._audio_buffer:
                         audio_chunk = self._audio_buffer.pop(0)
                         collected_audio.append(audio_chunk)
 
@@ -273,6 +274,7 @@ class SpeechRecognizer:
 
     def add_audio_chunk(self, audio_data: np.ndarray):
         """Add audio chunk to processing buffer."""
+        # Add synchronously to avoid timing issues
         async def _add_chunk():
             async with self._buffer_lock:
                 self._audio_buffer.append(audio_data.copy())
@@ -283,10 +285,16 @@ class SpeechRecognizer:
                 if len(self._audio_buffer) % 20 == 0:
                     logger.debug(f"ASR buffer size: {len(self._audio_buffer)} chunks")
 
-        # Schedule the addition
+        # Try to add synchronously first, fallback to async
         try:
             loop = asyncio.get_running_loop()
-            loop.create_task(_add_chunk())
+            if loop.is_running():
+                # Create task but don't wait - just ensure it's scheduled
+                asyncio.create_task(_add_chunk())
+            else:
+                # No running loop, add synchronously
+                import asyncio
+                asyncio.run(_add_chunk())
         except RuntimeError:
             # No running loop, add synchronously
             self._audio_buffer.append(audio_data.copy())
