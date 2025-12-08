@@ -123,7 +123,7 @@ class TextToSpeech:
                 cmd = [
                     'espeak-ng',
                     '-v', 'zh',      # Chinese voice
-                    '-s', '180',     # Speed
+                    '-s', '120',     # Speed (reduced for better clarity)
                     '-a', str(int(self.config.volume * 100)),  # Amplitude (volume)
                     '-w', temp_path, # Output file
                     safe_text
