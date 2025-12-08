@@ -2,18 +2,15 @@
 """
 Home Assistant - Voice-controlled AI assistant for Raspberry Pi.
 """
+# 在所有导入之前设置环境变量，确保PyAudio能正确初始化
+import os
+os.environ['AUDIODEV'] = 'hw:2,0'
+
 import asyncio
 import logging
-import os  # 添加 os 模块导入
 import signal
 import sys
 from pathlib import Path
-
-# 设置ALSA环境变量强制使用海康威视摄像头设备 (card 2, device 0)
-os.environ['AUDIODEV'] = 'hw:2,0'
-
-# Add current directory to Python path
-sys.path.insert(0, str(Path(__file__).parent))
 
 from config.settings import settings, initialize_logging
 from core.controller import VoiceAssistantController, AssistantState
