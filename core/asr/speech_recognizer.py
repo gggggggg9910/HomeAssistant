@@ -242,6 +242,9 @@ class SpeechRecognizer:
                 # Small delay to prevent busy waiting
                 await asyncio.sleep(0.05)
 
+            # Debug: Log collected audio status
+            logger.info(f"Audio collection completed: collected_audio={len(collected_audio) if collected_audio else 0} chunks")
+
             # Process collected audio
             if collected_audio:
                 # Concatenate all audio chunks
@@ -259,7 +262,7 @@ class SpeechRecognizer:
 
                 return text
             else:
-                logger.info("No audio collected for SenseVoice recognition")
+                logger.warning("No audio chunks collected during recognition period!")
                 return None
 
         except Exception as e:
@@ -276,6 +279,9 @@ class SpeechRecognizer:
                 # Keep buffer size reasonable for SenseVoice
                 if len(self._audio_buffer) > 50:  # SenseVoice can handle longer audio
                     self._audio_buffer.pop(0)
+                # Debug: Log buffer status occasionally
+                if len(self._audio_buffer) % 20 == 0:
+                    logger.debug(f"ASR buffer size: {len(self._audio_buffer)} chunks")
 
         # Schedule the addition
         try:
