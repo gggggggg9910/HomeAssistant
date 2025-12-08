@@ -20,7 +20,7 @@ class TTSConfig:
     """Configuration for Alibaba CosyVoice2-0.5B TTS."""
     def __init__(
         self,
-        model_id: str = "damo/CosyVoice2-0.5B",
+        model_id: str = "iic/CosyVoice2-0.5B",
         model_path: Optional[str] = None,
         voice: str = "中文女",
         speed: float = 1.0,
@@ -58,7 +58,17 @@ class TextToSpeech:
             else:
                 model_source = self.config.model_id
 
-            self.pipeline = pipeline('text-to-speech', model=model_source)
+            # Try different pipeline tasks for CosyVoice
+            try:
+                self.pipeline = pipeline('text-to-speech', model=model_source)
+            except Exception as e:
+                logger.warning(f"Standard text-to-speech pipeline failed: {e}, trying cosyvoice-specific pipeline")
+                try:
+                    from modelscope.pipelines import pipeline as ms_pipeline
+                    self.pipeline = ms_pipeline('speech-synthesis', model=model_source)
+                except Exception as e2:
+                    logger.error(f"Both pipeline attempts failed: {e2}")
+                    return False
             self._is_initialized = True
             logger.info(f"CosyVoice2-0.5B TTS initialized with model: {model_source}")
             return True
@@ -98,14 +108,24 @@ class TextToSpeech:
             # CosyVoice2-0.5B expects text directly, not in a dictionary
             logger.info(f"TTS input_data: '{text}'")
 
-            # Generate speech
+            # Generate speech - try different input formats for CosyVoice
             logger.debug(f"TTS calling CosyVoice pipeline with text: '{text}'")
+
+            # Try different input formats
+            input_data = {'text': text}
+            logger.debug(f"TTS trying input format: {input_data}")
+
             try:
-                result = self.pipeline(text)
+                result = self.pipeline(input_data)
                 logger.debug(f"TTS pipeline returned result of type: {type(result)}")
             except Exception as e:
-                logger.error(f"TTS pipeline call failed: {e}")
-                return None
+                logger.warning(f"Dict input failed: {e}, trying direct text input")
+                try:
+                    result = self.pipeline(text)
+                    logger.debug(f"TTS direct text input succeeded, result type: {type(result)}")
+                except Exception as e2:
+                    logger.error(f"Both input formats failed: {e2}")
+                    return None
 
             # Extract audio from result
             logger.debug(f"TTS result keys: {result.keys() if isinstance(result, dict) else 'Not a dict'}")
