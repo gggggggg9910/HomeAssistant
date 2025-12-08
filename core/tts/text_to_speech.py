@@ -27,7 +27,7 @@ class TTSConfig:
         volume: float = 0.8
     ):
         self.model_id = model_id
-        self.model_path = model_path  # Local model path, e.g., ~/models/iic/CosyVoice2-0.5B/CosyVoice-BlankEN/
+        self.model_path = model_path  # Local model path, e.g., ~/models/iic/CosyVoice2-0.5B/
         self.voice = voice
         self.speed = speed
         self.volume = volume

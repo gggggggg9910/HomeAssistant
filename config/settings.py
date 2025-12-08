@@ -57,7 +57,7 @@ class ASRSettings(BaseSettings):
 class TTSSettings(BaseSettings):
     """Text-to-speech configuration."""
     model_id: str = "iic/CosyVoice2-0.5B"  # Alibaba CosyVoice model
-    model_path: str = "~/models/iic/CosyVoice2-0.5B/CosyVoice-BlankEN"  # Local model directory with config.json
+    model_path: str = "~/models/iic/CosyVoice2-0.5B"  # Local model directory with config.json
     voice: str = "中文女"  # Voice style for CosyVoice
     speed: float = 1.0
     volume: float = 0.8
