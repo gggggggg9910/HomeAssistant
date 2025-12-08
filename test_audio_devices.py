@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-Audio device diagnostic script for HomeAssistant.
-Helps identify available audio input/output devices.
+Enhanced audio device diagnostic script for HomeAssistant.
+Helps identify available audio input/output devices and test functionality.
 """
 
 import logging
 import sys
+import time
+import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,15 +21,15 @@ except ImportError:
     sys.exit(1)
 
 def list_audio_devices():
-    """List all available audio devices."""
+    """List all available audio devices with detailed information."""
     if not PYAUDIO_AVAILABLE:
         return
 
     audio = pyaudio.PyAudio()
 
-    print("=" * 60)
-    print("AUDIO DEVICES DIAGNOSTIC")
-    print("=" * 60)
+    print("=" * 70)
+    print("ENHANCED AUDIO DEVICES DIAGNOSTIC")
+    print("=" * 70)
 
     print(f"PyAudio version: {pyaudio.__version__}")
     print(f"PortAudio version: {pyaudio.get_portaudio_version_text()}")
@@ -38,16 +40,39 @@ def list_audio_devices():
     print(f"Total audio devices found: {device_count}")
     print()
 
-    # List all devices
+    # Categorize devices
+    input_devices = []
+    output_devices = []
+    duplex_devices = []
+
+    # List all devices with detailed info
     print("ALL DEVICES:")
-    print("-" * 40)
+    print("-" * 50)
     for i in range(device_count):
         try:
             device_info = audio.get_device_info_by_index(i)
-            print(f"Device {i}: {device_info['name']}")
-            print(f"  Max Input Channels: {device_info['maxInputChannels']}")
-            print(f"  Max Output Channels: {device_info['maxOutputChannels']}")
-            print(f"  Default Sample Rate: {device_info['defaultSampleRate']}")
+            name = device_info['name']
+            input_ch = device_info['maxInputChannels']
+            output_ch = device_info['maxOutputChannels']
+            sample_rate = device_info['defaultSampleRate']
+
+            print(f"Device {i}: {name}")
+            print(f"  Input Channels: {input_ch}, Output Channels: {output_ch}")
+            print(f"  Default Sample Rate: {sample_rate} Hz")
+            print(f"  Host API: {device_info.get('hostApi', 'Unknown')}")
+
+            # Categorize
+            if input_ch > 0 and output_ch > 0:
+                duplex_devices.append(i)
+                print(f"  Type: DUPLEX (输入输出)")
+            elif input_ch > 0:
+                input_devices.append(i)
+                print(f"  Type: INPUT ONLY (仅输入 - 麦克风)")
+            elif output_ch > 0:
+                output_devices.append(i)
+                print(f"  Type: OUTPUT ONLY (仅输出 - 扬声器)")
+            else:
+                print("  Type: UNKNOWN (未知类型)"
             print()
         except Exception as e:
             print(f"Device {i}: Error getting info - {e}")
@@ -55,12 +80,12 @@ def list_audio_devices():
 
     # Get default devices
     print("DEFAULT DEVICES:")
-    print("-" * 40)
+    print("-" * 50)
     try:
         default_input = audio.get_default_input_device_info()
         print(f"Default Input Device: {default_input['name']} (Index: {default_input['index']})")
         print(f"  Max Input Channels: {default_input['maxInputChannels']}")
-        print(f"  Default Sample Rate: {default_input['defaultSampleRate']}")
+        print(f"  Default Sample Rate: {default_input['defaultSampleRate']} Hz")
     except Exception as e:
         print(f"Default Input Device: ERROR - {e}")
 
@@ -70,67 +95,225 @@ def list_audio_devices():
         default_output = audio.get_default_output_device_info()
         print(f"Default Output Device: {default_output['name']} (Index: {default_output['index']})")
         print(f"  Max Output Channels: {default_output['maxOutputChannels']}")
-        print(f"  Default Sample Rate: {default_output['defaultSampleRate']}")
+        print(f"  Default Sample Rate: {default_output['defaultSampleRate']} Hz")
     except Exception as e:
         print(f"Default Output Device: ERROR - {e}")
 
     print()
-    print("=" * 60)
+    print("=" * 70)
+    print("DEVICE SUMMARY:")
+    print("-" * 50)
+    print(f"Input devices (microphones): {len(input_devices)} - {[f'Device {i}' for i in input_devices]}")
+    print(f"Output devices (speakers): {len(output_devices)} - {[f'Device {i}' for i in output_devices]}")
+    print(f"Duplex devices: {len(duplex_devices)} - {[f'Device {i}' for i in duplex_devices]}")
+    print()
 
-    # Test basic functionality
-    print("FUNCTIONALITY TEST:")
-    print("-" * 40)
+    # Test devices individually
+    print("INDIVIDUAL DEVICE TESTS:")
+    print("-" * 50)
 
-    # Test input device
-    try:
-        if device_count > 0:
-            # Try to open a stream with default settings
-            test_stream = audio.open(
-                format=pyaudio.paInt16,
-                channels=1,
-                rate=16000,
-                input=True,
-                frames_per_buffer=1024
-            )
-            test_stream.close()
-            print("✓ Input stream test: PASSED")
+    for device_idx in range(device_count):
+        device_info = audio.get_device_info_by_index(device_idx)
+        name = device_info['name']
+        input_ch = device_info['maxInputChannels']
+        output_ch = device_info['maxOutputChannels']
+        sample_rate = device_info['defaultSampleRate']
+
+        print(f"Testing Device {device_idx}: {name}")
+
+        # Test input
+        if input_ch > 0:
+            try:
+                # Try different sample rates
+                test_rates = [16000, 44100, 48000, int(sample_rate)]
+                input_works = False
+                working_rate = None
+
+                for rate in test_rates:
+                    try:
+                        test_stream = audio.open(
+                            format=pyaudio.paInt16,
+                            channels=min(1, input_ch),
+                            rate=rate,
+                            input=True,
+                            input_device_index=device_idx,
+                            frames_per_buffer=1024
+                        )
+                        test_stream.close()
+                        input_works = True
+                        working_rate = rate
+                        break
+                    except:
+                        continue
+
+                if input_works:
+                    print(f"  ✓ Input: WORKS at {working_rate} Hz")
+                else:
+                    print(f"  ✗ Input: FAILED - tried rates {test_rates}")
+            except Exception as e:
+                print(f"  ✗ Input: FAILED - {e}")
         else:
-            print("✗ Input stream test: NO DEVICES")
-    except Exception as e:
-        print(f"✗ Input stream test: FAILED - {e}")
+            print("  - Input: Not supported")
 
-    # Test output device
+        # Test output
+        if output_ch > 0:
+            try:
+                # Try different sample rates
+                test_rates = [16000, 44100, 48000, int(sample_rate)]
+                output_works = False
+                working_rate = None
+
+                for rate in test_rates:
+                    try:
+                        test_stream = audio.open(
+                            format=pyaudio.paInt16,
+                            channels=min(1, output_ch),
+                            rate=rate,
+                            output=True,
+                            output_device_index=device_idx,
+                            frames_per_buffer=1024
+                        )
+                        test_stream.close()
+                        output_works = True
+                        working_rate = rate
+                        break
+                    except:
+                        continue
+
+                if output_works:
+                    print(f"  ✓ Output: WORKS at {working_rate} Hz")
+                else:
+                    print(f"  ✗ Output: FAILED - tried rates {test_rates}")
+            except Exception as e:
+                print(f"  ✗ Output: FAILED - {e}")
+        else:
+            print("  - Output: Not supported")
+
+        print()
+
+    audio.terminate()
+
+    print("RECOMMENDATIONS:")
+    print("-" * 50)
+
+    if len(input_devices) == 0:
+        print("❌ 没有找到麦克风设备！")
+        print("   • 检查麦克风是否正确连接")
+        print("   • Windows: 设备管理器 → 音频输入和输出")
+        print("   • Linux: 运行 'arecord -l' 检查")
+        print("   • macOS: 系统偏好设置 → 声音")
+        print("   • 尝试重新插拔USB麦克风或使用蓝牙麦克风")
+    else:
+        print(f"✓ 找到 {len(input_devices)} 个麦克风设备")
+        print("  建议使用的设备索引:"        for idx in input_devices:
+            device_info = audio.get_device_info_by_index(idx)
+            print(f"    input_device: {idx}  # {device_info['name']}")
+
+    print()
+
+    if len(output_devices) == 0:
+        print("❌ 没有找到扬声器设备！")
+        print("   • 检查扬声器是否正确连接")
+        print("   • 检查音频输出设置")
+    else:
+        print(f"✓ 找到 {len(output_devices)} 个扬声器设备")
+        print("  建议使用的设备索引:"        for idx in output_devices:
+            device_info = audio.get_device_info_by_index(idx)
+            print(f"    output_device: {idx}  # {device_info['name']}")
+
+    print()
+
+    if len(input_devices) > 0 and len(output_devices) > 0:
+        print("✓ 麦克风和扬声器都可用！")
+        print("  更新你的配置文件 config/settings.py 或 .env 文件:")
+        print("  ")
+        print("  # 示例配置")
+        if input_devices:
+            print(f"  audio__input_device={input_devices[0]}")
+        if output_devices:
+            print(f"  audio__output_device={output_devices[0]}")
+        print("  ")
+        print("  或者直接在 settings.py 中设置:")
+        print("  input_device: int = 你的麦克风设备索引")
+        print("  output_device: int = 你的扬声器设备索引")
+    else:
+        print("❌ 音频设置不完整，无法正常使用语音助手")
+
+def test_audio_recording(device_index=None, duration=3):
+    """Test actual audio recording and playback."""
+    if not PYAUDIO_AVAILABLE:
+        return
+
+    print(f"\n{'='*50}")
+    print(f"AUDIO RECORDING TEST (Device {device_index})")
+    print(f"{'='*50}")
+
+    audio = pyaudio.PyAudio()
+
     try:
-        if device_count > 0:
-            # Try to open an output stream
-            test_stream = audio.open(
+        # Test recording
+        print("Recording 3 seconds of audio...")
+        stream = audio.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=16000,
+            input=True,
+            input_device_index=device_index,
+            frames_per_buffer=1024
+        )
+
+        frames = []
+        for _ in range(0, int(16000 / 1024 * duration)):
+            data = stream.read(1024, exception_on_overflow=False)
+            frames.append(data)
+
+        stream.close()
+        print("✓ Recording completed")
+
+        # Convert to numpy array
+        audio_data = np.frombuffer(b''.join(frames), dtype=np.int16)
+        audio_data = audio_data.astype(np.float32) / 32768.0
+
+        print(f"Recorded {len(audio_data)} samples")
+        print(f"Audio duration: {len(audio_data)/16000:.2f} seconds")
+        print(f"Peak amplitude: {np.max(np.abs(audio_data)):.4f}")
+
+        # Test playback
+        if device_index is not None:
+            print("\nPlaying back recorded audio...")
+            output_stream = audio.open(
                 format=pyaudio.paInt16,
                 channels=1,
                 rate=16000,
                 output=True,
-                frames_per_buffer=1024
+                output_device_index=device_index
             )
-            test_stream.close()
-            print("✓ Output stream test: PASSED")
-        else:
-            print("✗ Output stream test: NO DEVICES")
+
+            # Convert back to int16
+            playback_data = (audio_data * 32767).astype(np.int16)
+
+            # Write in chunks
+            chunk_size = 1024
+            for i in range(0, len(playback_data), chunk_size):
+                chunk = playback_data[i:i+chunk_size]
+                output_stream.write(chunk.tobytes())
+
+            output_stream.close()
+            print("✓ Playback completed")
+
     except Exception as e:
-        print(f"✗ Output stream test: FAILED - {e}")
+        print(f"✗ Audio test failed: {e}")
+    finally:
+        audio.terminate()
 
-    audio.terminate()
-
-    print()
-    print("RECOMMENDATIONS:")
-    print("-" * 40)
-    if device_count == 0:
-        print("• No audio devices detected. Check your audio hardware and drivers.")
-        print("• On Windows: Check Device Manager for audio devices")
-        print("• On Linux: Check 'arecord -l' and 'aplay -l'")
-        print("• On macOS: Check System Preferences > Sound")
-    else:
-        print("• Audio devices are available")
-        print("• If still getting errors, try specifying device indices manually")
-        print("• Check that audio devices are not being used by other applications")
 
 if __name__ == "__main__":
-    list_audio_devices()
+    import sys
+
+    if len(sys.argv) > 1 and sys.argv[1] == "test":
+        # Test specific device
+        device_idx = int(sys.argv[2]) if len(sys.argv) > 2 else None
+        test_audio_recording(device_idx)
+    else:
+        # Default: list all devices
+        list_audio_devices()
