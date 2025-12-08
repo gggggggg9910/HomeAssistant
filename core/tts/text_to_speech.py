@@ -93,6 +93,7 @@ class TextToSpeech:
             import wave
             import subprocess
             import os
+            import numpy as np
 
             logger.info(f"TTS synthesizing text: '{text}'")
 
@@ -180,6 +181,7 @@ class TextToSpeech:
     async def _synthesize_with_espeak(self, text: str, output_path: str) -> Optional[np.ndarray]:
         """Fallback synthesis using espeak-ng."""
         try:
+            import subprocess
             # Ensure text is properly encoded
             safe_text = text.encode('utf-8', errors='ignore').decode('utf-8')
 
