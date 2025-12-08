@@ -13,6 +13,14 @@ except ImportError:
     MODELScope_AVAILABLE = False
     pipeline = None
 
+# Try to import pyttsx3 as fallback TTS
+try:
+    import pyttsx3
+    PYTTSX3_AVAILABLE = True
+except ImportError:
+    PYTTSX3_AVAILABLE = False
+    pyttsx3 = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -34,47 +42,62 @@ class TTSConfig:
 
 
 class TextToSpeech:
-    """Text-to-speech using Alibaba CosyVoice2-0.5B."""
+    """Text-to-speech using Alibaba CosyVoice2-0.5B or pyttsx3 fallback."""
 
     def __init__(self, config: TTSConfig):
         self.config = config
         self.pipeline = None
+        self.engine = None  # pyttsx3 engine
+        self.use_pyttsx3 = False
         self._is_initialized = False
 
     async def initialize(self) -> bool:
-        """Initialize the CosyVoice TTS engine."""
-        if not MODELScope_AVAILABLE:
-            logger.error("modelscope not available. Please install with: pip install modelscope")
-            return False
+        """Initialize the TTS engine with CosyVoice or pyttsx3 fallback."""
 
-        try:
-            # Use local model path if provided, otherwise use ModelScope ID
-            if self.config.model_path:
-                # Expand user path (~) and normalize path separators
-                import os
-                model_source = os.path.expanduser(self.config.model_path)
-                model_source = os.path.normpath(model_source)
-                logger.info(f"Using local model path: {model_source}")
-            else:
-                model_source = self.config.model_id
-
-            # Use ModelScope Tasks.text_to_speech for CosyVoice (following modelscope examples)
+        # Try CosyVoice first
+        if MODELScope_AVAILABLE:
             try:
-                from modelscope.utils.constant import Tasks
-                self.pipeline = pipeline(
-                    task=Tasks.text_to_speech,
-                    model=model_source
-                )
-                logger.info("CosyVoice pipeline created with Tasks.text_to_speech")
-            except Exception as e:
-                logger.error(f"Failed to create CosyVoice pipeline: {e}")
-                return False
-            self._is_initialized = True
-            logger.info(f"CosyVoice2-0.5B TTS initialized with model: {model_source}")
-            return True
+                # Use local model path if provided, otherwise use ModelScope ID
+                if self.config.model_path:
+                    # Expand user path (~) and normalize path separators
+                    import os
+                    model_source = os.path.expanduser(self.config.model_path)
+                    model_source = os.path.normpath(model_source)
+                    logger.info(f"Using local CosyVoice model path: {model_source}")
+                else:
+                    model_source = self.config.model_id
 
-        except Exception as e:
-            logger.error(f"Failed to initialize CosyVoice TTS: {e}")
+                # Use ModelScope Tasks.text_to_speech for CosyVoice
+                try:
+                    from modelscope.utils.constant import Tasks
+                    self.pipeline = pipeline(
+                        task=Tasks.text_to_speech,
+                        model=model_source
+                    )
+                    logger.info("CosyVoice pipeline created successfully")
+                    self._is_initialized = True
+                    logger.info(f"CosyVoice2-0.5B TTS initialized with model: {model_source}")
+                    return True
+                except Exception as e:
+                    logger.warning(f"Failed to create CosyVoice pipeline: {e}")
+
+            except Exception as e:
+                logger.warning(f"CosyVoice initialization failed: {e}")
+
+        # Fallback to pyttsx3
+        if PYTTSX3_AVAILABLE:
+            try:
+                logger.info("Falling back to pyttsx3 TTS engine")
+                self.engine = pyttsx3.init()
+                self.use_pyttsx3 = True
+                self._is_initialized = True
+                logger.info("pyttsx3 TTS initialized successfully")
+                return True
+            except Exception as e:
+                logger.error(f"pyttsx3 initialization also failed: {e}")
+                return False
+        else:
+            logger.error("Neither CosyVoice nor pyttsx3 is available. Please install at least one TTS engine.")
             return False
 
     async def cleanup(self):
