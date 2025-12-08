@@ -22,6 +22,8 @@ class AudioSettings(BaseSettings):
     chunk_size: int = 1024
     input_device: Optional[int] = None
     output_device: Optional[int] = None
+    enable_input: bool = True  # Enable audio input (microphone)
+    enable_output: bool = True  # Enable audio output (speakers)
 
     model_config = {
         "extra": "allow"

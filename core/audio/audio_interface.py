@@ -20,7 +20,9 @@ class AudioConfig:
         chunk_size: int = 1024,
         input_device: Optional[int] = None,
         output_device: Optional[int] = None,
-        dtype: str = 'float32'
+        dtype: str = 'float32',
+        enable_input: bool = True,
+        enable_output: bool = True
     ):
         self.sample_rate = sample_rate
         self.channels = channels
@@ -28,6 +30,8 @@ class AudioConfig:
         self.input_device = input_device
         self.output_device = output_device
         self.dtype = dtype
+        self.enable_input = enable_input
+        self.enable_output = enable_output
 
 
 class AudioInterface(ABC):
@@ -123,19 +127,51 @@ class AudioManager:
                 from .pyaudio_interface import PyAudioOutputInterface
                 output_interface_cls = PyAudioOutputInterface
 
-            # Initialize input interface
-            self.input_interface = input_interface_cls(self.config)
-            input_ok = await self.input_interface.initialize()
+            input_ok = False
+            output_ok = False
 
-            # Initialize output interface
-            self.output_interface = output_interface_cls(self.config)
-            output_ok = await self.output_interface.initialize()
-
-            self._is_initialized = input_ok and output_ok
-            if self._is_initialized:
-                logger.info("Audio manager initialized successfully")
+            # Initialize input interface (if enabled)
+            if getattr(self.config, 'enable_input', True):
+                try:
+                    self.input_interface = input_interface_cls(self.config)
+                    input_ok = await self.input_interface.initialize()
+                    if input_ok:
+                        logger.info("Audio input interface initialized successfully")
+                    else:
+                        logger.warning("Audio input interface initialization failed - voice input will be disabled")
+                except Exception as e:
+                    logger.warning(f"Audio input interface initialization failed: {e} - voice input will be disabled")
+                    self.input_interface = None
             else:
-                logger.error("Failed to initialize audio interfaces")
+                logger.info("Audio input disabled by configuration")
+                self.input_interface = None
+
+            # Initialize output interface (if enabled)
+            if getattr(self.config, 'enable_output', True):
+                try:
+                    self.output_interface = output_interface_cls(self.config)
+                    output_ok = await self.output_interface.initialize()
+                    if output_ok:
+                        logger.info("Audio output interface initialized successfully")
+                    else:
+                        logger.warning("Audio output interface initialization failed - voice output will be disabled")
+                except Exception as e:
+                    logger.warning(f"Audio output interface initialization failed: {e} - voice output will be disabled")
+                    self.output_interface = None
+            else:
+                logger.info("Audio output disabled by configuration")
+                self.output_interface = None
+
+            # Allow initialization if at least one interface works
+            self._is_initialized = input_ok or output_ok
+            if self._is_initialized:
+                logger.info("Audio manager initialized (some features may be disabled)")
+                if not input_ok:
+                    logger.warning("Voice input (microphone) is not available")
+                if not output_ok:
+                    logger.warning("Voice output (speakers) is not available")
+            else:
+                logger.error("Failed to initialize any audio interfaces")
 
             return self._is_initialized
 

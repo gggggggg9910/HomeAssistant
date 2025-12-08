@@ -56,7 +56,9 @@ class VoiceAssistantController:
                 channels=self.config.audio.channels,
                 chunk_size=self.config.audio.chunk_size,
                 input_device=self.config.audio.input_device,
-                output_device=self.config.audio.output_device
+                output_device=self.config.audio.output_device,
+                enable_input=self.config.audio.enable_input,
+                enable_output=self.config.audio.enable_output
             )
             self.audio_manager = AudioManager(audio_config)
             if not await self.audio_manager.initialize():
@@ -249,6 +251,14 @@ class VoiceAssistantController:
     async def _listen_for_keyword(self) -> bool:
         """Listen for keyword activation."""
         try:
+            # Check if audio input is available
+            if not self.audio_manager.input_interface or not self.audio_manager.input_interface.is_initialized():
+                logger.warning("No audio input device available. Cannot listen for keywords.")
+                logger.info("Voice assistant will wait for manual activation or API calls.")
+                # Wait for a reasonable timeout before returning
+                await asyncio.sleep(self.config.kws.max_wait_seconds)
+                return False
+
             logger.info(f"Listening for keyword: '{self.config.kws.keyword}'")
 
             # Create callbacks
