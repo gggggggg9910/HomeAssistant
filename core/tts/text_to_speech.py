@@ -150,13 +150,6 @@ class TextToSpeech:
                     logger.error(f"Error running espeak-ng: {e}")
                     return None
 
-                logger.debug(f"Running command: {' '.join(cmd)}")
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-
-                if result.returncode != 0:
-                    logger.error(f"espeak-ng failed: {result.stderr}")
-                    return None
-
                 # Check if file was created and has content
                 if not os.path.exists(temp_path):
                     logger.error("espeak-ng did not create WAV file")
