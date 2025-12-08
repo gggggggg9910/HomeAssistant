@@ -195,9 +195,14 @@ def list_audio_devices():
 
                 for rate in test_rates:
                     try:
+                        # For Hikvision devices, try with 1 channel even if device reports 0
+                        channels_to_use = 1 if ('hikvision' in device_name_lower or
+                                               '2k usb camera' in device_name_lower or
+                                               'hw:2,0' in device_name_lower) else min(1, output_ch or 1)
+
                         test_stream = audio.open(
                             format=pyaudio.paInt16,
-                            channels=min(1, output_ch),
+                            channels=channels_to_use,
                             rate=rate,
                             output=True,
                             output_device_index=device_idx,
@@ -207,7 +212,32 @@ def list_audio_devices():
                         output_works = True
                         working_rate = rate
                         break
-                    except:
+                    except Exception as e:
+                        # For Hikvision devices, also try ALSA direct access
+                        if ('hikvision' in device_name_lower or
+                            '2k usb camera' in device_name_lower or
+                            'hw:2,0' in device_name_lower):
+                            try:
+                                # Try to find the actual ALSA device index for hw:2,0
+                                import pyaudio
+                                host_api_info = audio.get_host_api_info_by_type(pyaudio.paALSA)
+                                for alsa_idx in range(host_api_info.get('deviceCount', 0)):
+                                    alsa_device_info = audio.get_device_info_by_host_api_device_index(host_api_info['index'], alsa_idx)
+                                    if 'hw:2,0' in alsa_device_info.get('name', '').lower():
+                                        test_stream = audio.open(
+                                            format=pyaudio.paInt16,
+                                            channels=1,
+                                            rate=rate,
+                                            output=True,
+                                            output_device_index=alsa_device_info['index'],
+                                            frames_per_buffer=1024
+                                        )
+                                        test_stream.close()
+                                        output_works = True
+                                        working_rate = rate
+                                        break
+                            except:
+                                pass
                         continue
 
                 if output_works:
