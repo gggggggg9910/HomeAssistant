@@ -275,19 +275,24 @@ class TextToSpeech:
                 audio_devices = ['default', 'sysdefault', 'hw:2,0']
 
                 result = None
+                successful_device = None
                 for device in audio_devices:
                     logger.info(f"Trying audio device: {device}")
                     result = subprocess.run(['aplay', '-D', device, temp_path],
                                           capture_output=True, timeout=10)
                     if result.returncode == 0:
                         logger.info(f"Successfully played audio on device: {device}")
+                        successful_device = device
+                        print(f"🎵 音频播放成功！使用设备: {device}")
                         break
                     else:
                         logger.warning(f"Device {device} failed: {result.stderr.decode()[:100]}")
+                        print(f"❌ 设备 {device} 失败")
 
                 # If all devices failed, still consider it successful since we generated the file
                 if result and result.returncode != 0:
                     logger.warning("All audio devices failed, but audio file was generated successfully")
+                    print("⚠️  所有音频设备都失败了，但音频文件已生成")
 
                 if result.returncode != 0:
                     logger.warning(f"aplay with HDMI failed, trying default: {result.stderr.decode()}")
