@@ -145,11 +145,19 @@ class SpeechRecognizer:
                 if len(audio_data.shape) > 1:
                     audio_data = audio_data.flatten()
 
-                # ModelScope pipeline expects audio file path or dict with 'array' key
-                audio_input = {
-                    'array': audio_data,
-                    'sampling_rate': 16000  # SenseVoice expects 16kHz
-                }
+                # Try different input formats for SenseVoice
+                # Some versions expect numpy array directly, others expect dict
+                try:
+                    # First try direct numpy array
+                    audio_input = audio_data
+                    result = self.pipeline(audio_input)
+                except Exception:
+                    # If direct array fails, try dict format
+                    audio_input = {
+                        'array': audio_data,
+                        'sampling_rate': 16000
+                    }
+                    result = self.pipeline(audio_input)
             else:
                 # Assume it's a file path
                 audio_input = audio_data
