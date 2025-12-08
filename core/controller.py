@@ -285,6 +285,7 @@ class VoiceAssistantController:
                 await self._speak_response(ai_response)
 
                 # Brief pause before listening again
+                logger.info("Conversation completed, continuing to listen...")
                 await asyncio.sleep(0.5)
 
             except Exception as e:

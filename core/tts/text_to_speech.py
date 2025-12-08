@@ -271,16 +271,28 @@ class TextToSpeech:
                     wf.setframerate(22050)
                     wf.writeframes(audio_data_int16.tobytes())
 
-                # Play with aplay using the Hikvision device
+                # Play with aplay using HDMI device (card 0)
                 logger.info(f"Playing TTS audio file: {temp_path}")
-                result = subprocess.run(['aplay', '-D', 'hw:2,0', temp_path],
+                result = subprocess.run(['aplay', '-D', 'hw:0,0', temp_path],
                                       capture_output=True, timeout=10)
+
+                if result.returncode != 0:
+                    logger.warning(f"aplay with HDMI failed, trying default: {result.stderr.decode()}")
+                    result = subprocess.run(['aplay', temp_path],
+                                          capture_output=True, timeout=10)
 
                 success = result.returncode == 0
                 if success:
-                    logger.info("TTS audio playback successful")
+                    logger.info("TTS audio playback successful - audio played through HDMI")
+                    print("🎵 TTS: 音频已通过HDMI播放")
                 else:
                     logger.error(f"TTS audio playback failed: {result.stderr.decode()}")
+                    # Save file for manual playback
+                    manual_file = "/tmp/tts_output.wav"
+                    import shutil
+                    shutil.copy2(temp_path, manual_file)
+                    logger.info(f"TTS audio saved to {manual_file} for manual playback")
+                    print(f"🔊 TTS: 音频保存到 {manual_file}，请手动播放测试")
 
                 return success
 
