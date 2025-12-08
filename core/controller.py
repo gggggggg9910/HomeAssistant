@@ -101,7 +101,7 @@ class VoiceAssistantController:
                         model_path=str(self.config.asr.model_path),
                         language=self.config.asr.language,
                         max_wait_seconds=self.config.asr.max_wait_seconds,
-                        sample_rate=self.config.audio.sample_rate,
+                        sample_rate=self.config.audio.input_sample_rate,  # Use input sample rate
                         disable_update=self.config.asr.disable_update
                     )
                     self.speech_recognizer = SpeechRecognizer(asr_config)
@@ -367,6 +367,12 @@ class VoiceAssistantController:
 
             # Create audio callback
             def audio_callback(audio_chunk: np.ndarray):
+                # Debug: log audio chunk info
+                if len(self._speech_audio_buffer) % 50 == 0:  # Log every 50 chunks
+                    logger.info(f"ASR audio chunk: shape={audio_chunk.shape}, dtype={audio_chunk.dtype}, "
+                              f"rms={np.sqrt(np.mean(audio_chunk**2)):.4f}, "
+                              f"buffer_size={len(self._speech_audio_buffer)}")
+
                 self._speech_audio_buffer.append(audio_chunk.copy())
                 self.speech_recognizer.add_audio_chunk(audio_chunk)
 
