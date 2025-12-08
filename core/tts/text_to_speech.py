@@ -129,8 +129,14 @@ class TextToSpeech:
                 logger.debug(f"Running espeak-ng command: {' '.join(cmd)}")
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
 
+                logger.debug(f"espeak-ng return code: {result.returncode}")
+                if result.stdout:
+                    logger.debug(f"espeak-ng stdout: {result.stdout[:100]}...")
+                if result.stderr:
+                    logger.debug(f"espeak-ng stderr: {result.stderr[:100]}...")
+
                 if result.returncode != 0:
-                    logger.error(f"espeak-ng failed: {result.stderr}")
+                    logger.error(f"espeak-ng failed with return code {result.returncode}: {result.stderr}")
                     return None
 
                 logger.debug(f"Running command: {' '.join(cmd)}")
@@ -227,7 +233,12 @@ class TextToSpeech:
             logger.info(f"TTS speak_text called with: '{text}'")
             audio_data = await self.synthesize_speech(text)
             logger.info(f"TTS synthesis result: audio_data is {'not ' if audio_data is None else ''}None")
-            if audio_data is not None:
+            if audio_data is None:
+                logger.error("TTS synthesis failed, cannot play audio")
+                return False
+            if len(audio_data) == 0:
+                logger.error("TTS synthesis produced empty audio")
+                return False
                 # Import here to avoid circular imports
                 from ..audio import AudioManager, AudioConfig
 
