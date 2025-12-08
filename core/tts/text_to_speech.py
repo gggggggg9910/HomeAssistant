@@ -58,17 +58,17 @@ class TextToSpeech:
             else:
                 model_source = self.config.model_id
 
-            # Try different pipeline tasks for CosyVoice
+            # Use ModelScope Tasks.text_to_speech for CosyVoice (following modelscope examples)
             try:
-                self.pipeline = pipeline('text-to-speech', model=model_source)
+                from modelscope.utils.constant import Tasks
+                self.pipeline = pipeline(
+                    task=Tasks.text_to_speech,
+                    model=model_source
+                )
+                logger.info("CosyVoice pipeline created with Tasks.text_to_speech")
             except Exception as e:
-                logger.warning(f"Standard text-to-speech pipeline failed: {e}, trying cosyvoice-specific pipeline")
-                try:
-                    from modelscope.pipelines import pipeline as ms_pipeline
-                    self.pipeline = ms_pipeline('speech-synthesis', model=model_source)
-                except Exception as e2:
-                    logger.error(f"Both pipeline attempts failed: {e2}")
-                    return False
+                logger.error(f"Failed to create CosyVoice pipeline: {e}")
+                return False
             self._is_initialized = True
             logger.info(f"CosyVoice2-0.5B TTS initialized with model: {model_source}")
             return True
