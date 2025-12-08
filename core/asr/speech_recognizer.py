@@ -234,9 +234,13 @@ class SpeechRecognizer:
             if collected_audio:
                 # Concatenate all audio chunks
                 full_audio = np.concatenate(collected_audio)
+                logger.info(f"SenseVoice processing audio: {len(collected_audio)} chunks, "
+                          f"total_samples={len(full_audio)}, duration={len(full_audio)/self.config.sample_rate:.2f}s, "
+                          f"rms={np.sqrt(np.mean(full_audio**2)):.4f}")
 
                 # Recognize the complete utterance
                 text = await self.recognize_speech(full_audio)
+                logger.info(f"SenseVoice recognition result: '{text}'")
 
                 if text and text_callback:
                     text_callback(text)
