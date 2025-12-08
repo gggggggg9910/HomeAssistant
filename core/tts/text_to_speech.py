@@ -222,6 +222,8 @@ class TextToSpeech:
 
         except Exception as e:
             logger.error(f"Error during speech synthesis: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return None
 
     async def speak_text(self, text: str) -> bool:
