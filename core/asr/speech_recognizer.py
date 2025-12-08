@@ -177,8 +177,12 @@ class SpeechRecognizer:
                 text = str(result).strip()
 
             if text:
-                logger.info(f"SenseVoice recognized speech: '{text}'")
-                return text
+                # Clean up SenseVoice special tokens
+                # Remove <|zh|>, <|NEUTRAL|>, <|Speech|>, etc.
+                import re
+                cleaned_text = re.sub(r'<\|[^>]+\|>', '', text).strip()
+                logger.info(f"SenseVoice recognized speech: '{text}' -> cleaned: '{cleaned_text}'")
+                return cleaned_text if cleaned_text else text
             else:
                 logger.debug("SenseVoice: No speech recognized")
                 return None
@@ -243,12 +247,10 @@ class SpeechRecognizer:
                 # Concatenate all audio chunks
                 full_audio = np.concatenate(collected_audio)
                 logger.info(f"SenseVoice processing audio: {len(collected_audio)} chunks, "
-                          f"total_samples={len(full_audio)}, duration={len(full_audio)/self.config.sample_rate:.2f}s, "
-                          f"rms={np.sqrt(np.mean(full_audio**2)):.4f}")
+                          f"total_samples={len(full_audio)}, duration={len(full_audio)/self.config.sample_rate:.2f}s")
 
                 # Recognize the complete utterance
                 text = await self.recognize_speech(full_audio)
-                logger.info(f"SenseVoice recognition result: '{text}'")
 
                 if text and text_callback:
                     text_callback(text)
