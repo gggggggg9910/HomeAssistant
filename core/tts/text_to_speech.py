@@ -131,13 +131,21 @@ class TextToSpeech:
                             logger.warning("No Chinese voice found, using system default")
 
                         # Generate speech to file
+                        logger.info(f"Saving speech to file: {temp_path}")
                         engine.save_to_file(text, temp_path)
                         engine.runAndWait()
 
+                        # Wait a bit for file to be written
+                        import time
+                        time.sleep(0.5)
+
                         # Check if file was created successfully
                         if os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
-                            logger.info("pyttsx3 synthesis successful")
+                            logger.info(f"pyttsx3 synthesis successful, file size: {os.path.getsize(temp_path)}")
                         else:
+                            logger.error(f"pyttsx3 file not created or empty: exists={os.path.exists(temp_path)}")
+                            if os.path.exists(temp_path):
+                                logger.error(f"File size: {os.path.getsize(temp_path)}")
                             raise Exception("pyttsx3 failed to create audio file")
 
                     except Exception as e:
@@ -182,6 +190,7 @@ class TextToSpeech:
         """Fallback synthesis using espeak-ng."""
         try:
             import subprocess
+            import os
             # Ensure text is properly encoded
             safe_text = text.encode('utf-8', errors='ignore').decode('utf-8')
 
