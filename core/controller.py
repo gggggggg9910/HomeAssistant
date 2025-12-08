@@ -367,8 +367,12 @@ class VoiceAssistantController:
 
             # Create audio callback
             def audio_callback(audio_chunk: np.ndarray):
+                if len(self._speech_audio_buffer) == 0:
+                    logger.info(f"Audio callback started receiving chunks (first chunk shape: {audio_chunk.shape})")
                 self._speech_audio_buffer.append(audio_chunk.copy())
                 self.speech_recognizer.add_audio_chunk(audio_chunk)
+                if len(self._speech_audio_buffer) % 50 == 0:
+                    logger.debug(f"Collected {len(self._speech_audio_buffer)} audio chunks")
 
             # Start audio listening
             audio_task = asyncio.create_task(
