@@ -375,13 +375,32 @@ class VoiceAssistantController:
                 self.audio_manager.start_listening(audio_callback)
             )
 
-            # Start speech recognition
-            recognition_task = asyncio.create_task(
-                self.speech_recognizer.start_continuous_recognition(
-                    audio_callback=lambda chunk: None,  # Already handled
-                    timeout_seconds=self.config.asr.max_wait_seconds
-                )
-            )
+            # Start speech recognition - pass audio data from our buffer
+            async def recognize_with_buffer():
+                # Wait for audio to be collected
+                await asyncio.sleep(self.config.asr.max_wait_seconds)
+
+                # Check if we have collected audio
+                if self._speech_audio_buffer:
+                    logger.info(f"Collected {len(self._speech_audio_buffer)} audio chunks for recognition")
+
+                    # Concatenate audio
+                    full_audio = np.concatenate(self._speech_audio_buffer)
+                    rms = np.sqrt(np.mean(full_audio**2))
+                    logger.info(f"Audio RMS: {rms:.4f}, duration: {len(full_audio)/16000:.2f}s")
+
+                    # Try recognition
+                    if rms > 0.01:  # Only if audio is loud enough
+                        result = await self.speech_recognizer.recognize_speech(full_audio)
+                        return result
+                    else:
+                        logger.info("Audio too quiet for recognition")
+                        return None
+                else:
+                    logger.warning("No audio collected in buffer")
+                    return None
+
+            recognition_task = asyncio.create_task(recognize_with_buffer())
 
             # Wait for recognition to complete or timeout
             done, pending = await asyncio.wait(
