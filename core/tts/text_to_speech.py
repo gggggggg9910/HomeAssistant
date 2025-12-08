@@ -104,15 +104,52 @@ class TextToSpeech:
 
             try:
                 # Save speech to file
+                logger.debug(f"Saving speech to temporary file: {temp_path}")
                 self.engine.save_to_file(text, temp_path)
                 self.engine.runAndWait()
 
+                # Check if file was created and has content
+                import os
+                if not os.path.exists(temp_path):
+                    logger.error("Temporary WAV file was not created")
+                    return None
+
+                file_size = os.path.getsize(temp_path)
+                logger.debug(f"WAV file created, size: {file_size} bytes")
+
+                if file_size == 0:
+                    logger.error("WAV file is empty")
+                    return None
+
                 # Read the WAV file and convert to numpy array
+                logger.debug("Reading WAV file...")
                 with wave.open(temp_path, 'rb') as wf:
+                    channels = wf.getnchannels()
+                    sample_width = wf.getsampwidth()
+                    frame_rate = wf.getframerate()
+                    n_frames = wf.getnframes()
+
+                    logger.debug(f"WAV info: channels={channels}, sample_width={sample_width}, "
+                               f"frame_rate={frame_rate}, n_frames={n_frames}")
+
                     # Read all frames
-                    frames = wf.readframes(wf.getnframes())
+                    frames = wf.readframes(n_frames)
+                    logger.debug(f"Read {len(frames)} bytes from WAV file")
+
                     # Convert to numpy array
-                    audio_data = np.frombuffer(frames, dtype=np.int16).astype(np.float32)
+                    if sample_width == 2:  # 16-bit
+                        audio_data = np.frombuffer(frames, dtype=np.int16).astype(np.float32)
+                    else:
+                        logger.error(f"Unsupported sample width: {sample_width}")
+                        return None
+
+                    # If stereo, convert to mono
+                    if channels == 2:
+                        audio_data = audio_data.reshape(-1, 2).mean(axis=1)
+                    elif channels != 1:
+                        logger.error(f"Unsupported number of channels: {channels}")
+                        return None
+
                     # Normalize to [-1, 1]
                     audio_data = audio_data / 32768.0
 
@@ -126,9 +163,11 @@ class TextToSpeech:
                 # Clean up temp file
                 import os
                 try:
-                    os.unlink(temp_path)
-                except:
-                    pass
+                    if os.path.exists(temp_path):
+                        os.unlink(temp_path)
+                        logger.debug(f"Cleaned up temporary file: {temp_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to clean up temp file {temp_path}: {e}")
 
         except Exception as e:
             logger.error(f"Error during speech synthesis: {e}")
