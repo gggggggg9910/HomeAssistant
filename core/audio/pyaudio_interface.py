@@ -97,7 +97,6 @@ class PyAudioInputInterface(AudioInputInterface):
                     )
                 else:
                     # 如果没有设置设备索引，尝试直接使用ALSA设备名称
-                    import pyaudio
                     host_api_info = self.audio.get_host_api_info_by_type(pyaudio.paALSA)
                     for i in range(host_api_info.get('deviceCount', 0)):
                         device_info = self.audio.get_device_info_by_host_api_device_index(host_api_info['index'], i)
@@ -183,7 +182,6 @@ class PyAudioInputInterface(AudioInputInterface):
                     )
                 else:
                     # 如果没有设置设备索引，尝试直接使用ALSA设备名称
-                    import pyaudio
                     host_api_info = self.audio.get_host_api_info_by_type(pyaudio.paALSA)
                     for i in range(host_api_info.get('deviceCount', 0)):
                         device_info = self.audio.get_device_info_by_host_api_device_index(host_api_info['index'], i)
