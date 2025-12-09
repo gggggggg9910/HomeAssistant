@@ -8,7 +8,7 @@ from modelscope import snapshot_download
 def main():
     print("Starting download of CosyVoice2-0.5B model...")
     try:
-        snapshot_download('iic/CosyVoice2-0.5B', local_dir='/home/wudixin/models/CosyVoice2-0.5B')
+        #snapshot_download('iic/CosyVoice2-0.5B', local_dir='/home/wudixin/models/CosyVoice2-0.5B')
         print("Download completed successfully!")
         print("Testing the downloaded model...")
 
