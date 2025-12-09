@@ -13,7 +13,7 @@ def main():
         print("Testing the downloaded model...")
 
         from modelscope.pipelines import pipeline
-        tts = pipeline('text-to-speech', model='/home/wudixin/models/CosyVoice2-0.5B')
+        tts = pipeline('text-to-speech', model='/home/wudixin/models/iic/CosyVoice2-0.5B')
         audio = tts("你好，这是通过 ModelScope 下载的 CosyVoice2！")
         # 保存音频
         import soundfile as sf
