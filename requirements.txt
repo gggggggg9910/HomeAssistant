@@ -21,6 +21,7 @@ datasets>=2.4.0
 dashscope>=1.14.0
 
 # Text-to-speech (Alibaba CosyVoice)
+# cosyvoice will be installed from git (see installation instructions)
 # Additional dependencies for CosyVoice will be installed via modelscope
 
 # Configuration and utilities
