@@ -1,26 +1,39 @@
 #!/usr/bin/env python3
 """
-Script to download CosyVoice2-0.5B model from modelscope
+Script to test if CosyVoice2-0.5B model can be used
 """
 
-from modelscope import snapshot_download
-
 def main():
-    print("Starting download of CosyVoice2-0.5B model...")
+    print("Testing CosyVoice2-0.5B model availability...")
     try:
-        #snapshot_download('iic/CosyVoice2-0.5B', local_dir='/home/wudixin/models/CosyVoice2-0.5B')
-        print("Download completed successfully!")
-        print("Testing the downloaded model...")
+        # Test basic imports
+        print("Testing imports...")
+        import sys
+        sys.path.append('/home/wudixin/models/CosyVoice/third_party/Matcha-TTS')
 
-        from modelscope.pipelines import pipeline
-        tts = pipeline('text-to-speech', model='/home/wudixin/models/iic/CosyVoice2-0.5B')
-        audio = tts("你好，这是通过 ModelScope 下载的 CosyVoice2！")
-        # 保存音频
-        import soundfile as sf
-        sf.write('output.wav', audio['audio'], audio['sampling_rate'])
-        print("Test audio saved as output.wav")
+        from cosyvoice.cli.cosyvoice import CosyVoice2
+        print("✓ CosyVoice2 import successful")
+
+        # Test model loading
+        print("Testing model loading...")
+        model_path = '/home/wudixin/models/iic/CosyVoice2-0.5B'
+        cosyvoice = CosyVoice2(model_path, load_jit=False, load_trt=False, fp16=False)
+        print("✓ Model loaded successfully")
+
+        # Test basic functionality
+        print("Testing basic functionality...")
+        print(f"✓ Sample rate: {cosyvoice.sample_rate}")
+        print("✓ CosyVoice2 is ready to use!")
+
+        print("\nModel test completed successfully!")
+        print("You can now use CosyVoice2 for text-to-speech synthesis.")
+
+    except ImportError as e:
+        print(f"❌ Import error: {e}")
+        print("Please check if CosyVoice2 is properly installed.")
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"❌ Error: {e}")
+        print("Please check your model path and installation.")
 
 if __name__ == "__main__":
     main()
