@@ -8,7 +8,7 @@ from modelscope import snapshot_download
 def main():
     print("Starting download of CosyVoice2-0.5B model...")
     try:
-        snapshot_download('iic/CosyVoice2-0.5B', local_dir='./CosyVoice2-0.5B')
+        snapshot_download('iic/CosyVoice2-0.5B', local_dir='~/.models/iic/CosyVoice2-0.5')
         print("Download completed successfully!")
     except Exception as e:
         print(f"Download failed: {e}")
