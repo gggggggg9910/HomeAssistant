@@ -62,7 +62,7 @@ def main():
         # NOTE if you want to reproduce the results on https://funaudiollm.github.io/cosyvoice2, please add text_frontend=False during inference
         # zero_shot usage
         import os
-        prompt_file = 'zero_shot_prompt.wav'
+        prompt_file = '/home/wudixin/models/CosyVoice/asset/zero_shot_prompt.wav'
         if not os.path.exists(prompt_file):
             print(f"⚠️  Warning: Prompt file '{prompt_file}' not found. Skipping inference tests.")
             print("   You can download a sample prompt file from the CosyVoice2 repository.")
