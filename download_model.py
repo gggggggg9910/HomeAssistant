@@ -13,7 +13,7 @@ def main():
         print("Testing imports...")
         import sys
         sys.path.append('/home/wudixin/models/CosyVoice/third_party/Matcha-TTS')
-        from cosyvoice.cli.cosyvoice import CosyVoice, CosyVoice2
+        from cosyvoice.cli.cosyvoice import CosyVoice2
         from cosyvoice.utils.file_utils import load_wav
         import torchaudio
 
