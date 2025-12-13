@@ -6,6 +6,9 @@ Script to test if CosyVoice2-0.5B model can be used
 def main():
     print("Testing CosyVoice2-0.5B model availability...")
     try:
+        from modelscope import snapshot_download
+        model_dir = snapshot_download('iic/CosyVoice2-0.5B', local_dir='/home/wudixin/models/iic/CosyVoice2-0.5B')
+        print(f"✓ Model downloaded to: {model_dir}")
         # Test basic imports
         print("Testing imports...")
         import sys
@@ -18,8 +21,7 @@ def main():
 
         # Test model loading
         print("Testing model loading...")
-        model_path = '/home/wudixin/models/iic/CosyVoice2-0.5B'
-        cosyvoice = CosyVoice2(model_path, load_jit=False, load_trt=False, fp16=False)
+        cosyvoice = CosyVoice2(model_dir, load_jit=False, load_trt=False, fp16=False)
         print("✓ Model loaded successfully")
 
         # Test basic functionality
