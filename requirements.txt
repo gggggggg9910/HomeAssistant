@@ -23,6 +23,7 @@ dashscope>=1.14.0
 # Text-to-speech (Alibaba CosyVoice)
 # cosyvoice will be installed from git (see installation instructions)
 # Additional dependencies for CosyVoice will be installed via modelscope
+torchcodec>=0.1.0
 
 # Configuration and utilities
 python-dotenv>=1.0.0

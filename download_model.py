@@ -51,9 +51,10 @@ def main():
     except ImportError as e:
         print(f"❌ Import error: {e}")
         print("Please check if CosyVoice2 is properly installed.")
+        traceback.print_exc()  # 打印完整堆栈
     except Exception as e:
         print(f"❌ Error: {e}")
         print("Please check your model path and installation.")
-
+        traceback.print_exc()  # 打印完整堆栈
 if __name__ == "__main__":
     main()
