@@ -6,14 +6,15 @@ Script to test if CosyVoice2-0.5B model can be used
 def main():
     print("Testing CosyVoice2-0.5B model availability...")
     try:
-        from modelscope import snapshot_download
-        model_dir = snapshot_download('iic/CosyVoice2-0.5B', local_dir='/home/wudixin/models/iic/CosyVoice2-0.5B')
-        print(f"✓ Model downloaded to: {model_dir}")
+        #from modelscope import snapshot_download
+        #model_dir = snapshot_download('iic/CosyVoice2-0.5B', local_dir='/home/wudixin/models/iic/CosyVoice2-0.5B')
+        #print(f"✓ Model downloaded to: {model_dir}")
+        model_dir = '/home/wudixin/models/iic/CosyVoice2-0.5B'
         # Test basic imports
         print("Testing imports...")
         import sys
         sys.path.append('/home/wudixin/models/CosyVoice/third_party/Matcha-TTS')
-        from cosyvoice.cli.cosyvoice import CosyVoice2
+        from cosyvoice.cli.cosyvoice import CosyVoice, CosyVoice2
         from cosyvoice.utils.file_utils import load_wav
         import torchaudio
 
