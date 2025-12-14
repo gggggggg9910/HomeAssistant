@@ -227,6 +227,11 @@ class TextToSpeechPiper:
             True if successful
         """
         model_dir = Path(os.path.expanduser(self.config.model_dir))
+        logger.debug(f"Loading voice '{voice_id}' from model_dir: {model_dir}")
+        logger.debug(f"Model directory exists: {model_dir.exists()}")
+        
+        if model_dir.exists():
+            logger.debug(f"Contents of {model_dir}: {list(model_dir.iterdir())}")
         
         # Check if using custom model paths
         if self.config.custom_model_path:
@@ -247,16 +252,45 @@ class TextToSpeechPiper:
             model_path = model_dir / voice_config["model"]
             config_path = model_dir / voice_config["config"]
             
+            logger.debug(f"Looking for model: {model_path}")
+            logger.debug(f"Looking for config: {config_path}")
+            logger.debug(f"Model file exists: {model_path.exists()}")
+            logger.debug(f"Config file exists: {config_path.exists()}")
+            
             if not model_path.exists():
-                logger.warning(f"Voice model not found: {model_path}")
+                logger.error(f"Voice model not found: {model_path}")
+                logger.error(f"Model directory: {model_dir}")
+                logger.error(f"Expected model file: {voice_config['model']}")
+                logger.error(f"Expected config file: {voice_config['config']}")
+                if model_dir.exists():
+                    logger.error(f"Files in directory: {[f.name for f in model_dir.iterdir()]}")
                 logger.info(f"Please download the model. See instructions below.")
                 self._print_download_instructions(voice_id, voice_config)
                 return False
+            
+            # Config file is optional, warn but don't fail
+            if not config_path.exists():
+                logger.warning(f"Config file not found: {config_path}, trying to find alternative")
+                # Try alternative config file names
+                alt_config_paths = [
+                    model_dir / model_path.with_suffix('.onnx.json').name,  # Same name as model with .json
+                    model_dir / f"{voice_id}.onnx.json",  # Voice ID based
+                ]
+                for alt_path in alt_config_paths:
+                    if alt_path.exists():
+                        logger.info(f"Found alternative config file: {alt_path}")
+                        config_path = alt_path
+                        break
+                else:
+                    logger.warning("No config file found, continuing without it (Piper may work without config)")
+                    config_path = None
                 
         else:
             # Try to find model file directly
             model_path = model_dir / f"{voice_id}.onnx"
             config_path = model_dir / f"{voice_id}.onnx.json"
+            
+            logger.debug(f"Trying direct model path: {model_path}")
             
             if not model_path.exists():
                 logger.error(f"Voice model not found: {model_path}")
@@ -265,7 +299,7 @@ class TextToSpeechPiper:
                     logger.info(f"  - {vid}: {vconfig['description']}")
                 return False
         
-        # Load model config
+        # Load model config (optional)
         if config_path and config_path.exists():
             try:
                 with open(config_path, 'r', encoding='utf-8') as f:
@@ -275,6 +309,9 @@ class TextToSpeechPiper:
             except Exception as e:
                 logger.warning(f"Failed to load model config: {e}")
                 self._model_config = {}
+        else:
+            logger.debug("No config file found, using defaults")
+            self._model_config = {}
         
         self._model_path = str(model_path)
         self._config_path = str(config_path) if config_path else None
@@ -287,7 +324,7 @@ class TextToSpeechPiper:
             "config": self._model_config,
         }
         
-        logger.info(f"Voice loaded: {voice_id} from {model_path}")
+        logger.info(f"Voice loaded successfully: {voice_id} from {model_path}")
         return True
     
     def _print_download_instructions(self, voice_id: str, voice_config: Dict):
