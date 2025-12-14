@@ -69,6 +69,9 @@ class SpeechRecognizer:
 
     async def initialize(self) -> bool:
         """Initialize the SenseVoice speech recognizer."""
+        # Declare global variables at the start to avoid "used prior to global declaration" error
+        global torch, snapshot_download, pipeline, Tasks, MODELScope_AVAILABLE
+        
         # Debug: Check current state and try re-importing if needed
         if not MODELScope_AVAILABLE:
             logger.warning(f"MODELScope_AVAILABLE is False, attempting to import modelscope again...")
@@ -82,7 +85,6 @@ class SpeechRecognizer:
                 from modelscope.utils.constant import Tasks as T
                 
                 # Update global variables
-                global torch, snapshot_download, pipeline, Tasks, MODELScope_AVAILABLE
                 torch = t
                 snapshot_download = sd
                 pipeline = p
