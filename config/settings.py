@@ -51,7 +51,7 @@ class KWSSettings(BaseSettings):
 class ASRSettings(BaseSettings):
     """Speech recognition configuration."""
     model_id: str = "iic/SenseVoiceSmall"  # Alibaba SenseVoice model
-    model_path: str = "~/models/sensevoice"  # Local model cache path
+    model_path: str = "~/models/iic/SenseVoiceSmall"  # Local model cache path - matches actual model location
     language: str = "zh"
     max_wait_seconds: int = 10
     use_gpu: bool = False  # Use GPU if available

@@ -71,30 +71,32 @@ class SpeechRecognizer:
         """Initialize the SenseVoice speech recognizer."""
         # Declare global variables at the start to avoid "used prior to global declaration" error
         global torch, snapshot_download, pipeline, Tasks, MODELScope_AVAILABLE
-        
+
         # Debug: Check current state and try re-importing if needed
         if not MODELScope_AVAILABLE:
             logger.warning(f"MODELScope_AVAILABLE is False, attempting to import modelscope again...")
             if '_import_error' in globals():
                 logger.debug(f"Previous import error: {_import_error}")
-            
+
             try:
                 import torch as t
                 from modelscope import snapshot_download as sd
                 from modelscope.pipelines import pipeline as p
                 from modelscope.utils.constant import Tasks as T
-                
+
                 # Update global variables
                 torch = t
                 snapshot_download = sd
                 pipeline = p
                 Tasks = T
                 MODELScope_AVAILABLE = True
-                
+
                 logger.info("✅ modelscope imported successfully on retry!")
             except ImportError as e:
                 logger.error(f"❌ modelscope import failed: {e}")
-                logger.error("Please check: pip install modelscope torch")
+                logger.error("Common fixes:")
+                logger.error("  pip install 'datasets<3.0.0'  # Downgrade datasets")
+                logger.error("  pip install oss2 addict      # Missing dependencies")
                 import traceback
                 logger.debug(traceback.format_exc())
                 return False
@@ -103,9 +105,9 @@ class SpeechRecognizer:
                 import traceback
                 logger.debug(traceback.format_exc())
                 return False
-        
+
         if not MODELScope_AVAILABLE:
-            logger.error("modelscope not available. Please install with: pip install modelscope")
+            logger.error("modelscope not available. Please install with: pip install modelscope torch")
             return False
 
         try:
