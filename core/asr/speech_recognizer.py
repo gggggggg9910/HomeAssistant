@@ -218,28 +218,31 @@ class SpeechRecognizer:
                     # Ensure proper shape (should be 1D for single channel)
                     if len(audio_data.shape) > 1:
                         audio_data = audio_data.flatten()
-
-                    # Try different input formats for SenseVoice
-                    # Some versions expect numpy array directly, others expect dict
-                    try:
-                        # First try direct numpy array
-                        audio_input = audio_data
-                    except Exception:
-                        # If direct array fails, try dict format
-                        audio_input = {
-                            'array': audio_data,
-                            'sampling_rate': 16000
-                        }
                     
                     audio_duration = len(audio_data) / self.config.sample_rate
                     logger.info(f"[ASR] 音频长度: {audio_duration:.2f}秒, 采样数: {len(audio_data)}")
+                    
+                    # Prepare audio input - try direct array first
+                    audio_input = audio_data
             else:
                 # Assume it's a file path
                 audio_input = audio_data
 
-            # Run recognition
+            # Run recognition - try different input formats
             with self.asr_monitor.stage("模型推理"):
-                result = self.pipeline(audio_input)
+                try:
+                    # First try direct numpy array or file path
+                    result = self.pipeline(audio_input)
+                except Exception:
+                    # If direct array fails, try dict format
+                    if isinstance(audio_data, np.ndarray):
+                        audio_input = {
+                            'array': audio_data,
+                            'sampling_rate': 16000
+                        }
+                        result = self.pipeline(audio_input)
+                    else:
+                        raise
 
             # Extract text from result
             with self.asr_monitor.stage("结果后处理"):
