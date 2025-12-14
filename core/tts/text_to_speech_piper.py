@@ -22,7 +22,8 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Default model directory
+# Default model directory - HARDCODED, never changes
+# Piper TTS uses its own dedicated directory, independent from other TTS engines
 DEFAULT_MODEL_DIR = os.path.expanduser("~/models/piper")
 
 # Pre-defined voice configurations
@@ -50,14 +51,17 @@ BUILT_IN_VOICES = {
 class PiperTTSConfig:
     """Configuration for Piper TTS.
     
-    Supports both new Piper-specific parameters and legacy CosyVoice parameters
-    for backward compatibility.
+    IMPORTANT: Model directory is hardcoded to ~/models/piper and cannot be changed.
+    This ensures Piper TTS is completely independent from other TTS engines (like CosyVoice).
+    Piper TTS has its own dedicated directory and doesn't interfere with other models.
+    
+    Supports legacy parameters (model_id, model_path, model_dir) for backward compatibility
+    with controller.py, but these are ignored - the path is always ~/models/piper.
     """
     
     def __init__(
         self,
-        # Piper-specific parameters
-        model_dir: Optional[str] = None,
+        # Voice settings
         voice: Optional[str] = None,
         custom_model_path: Optional[str] = None,
         custom_config_path: Optional[str] = None,
@@ -77,9 +81,11 @@ class PiperTTSConfig:
         use_cuda: bool = False,
         num_threads: int = 4,
         
-        # Legacy CosyVoice parameters (for backward compatibility)
-        model_id: Optional[str] = None,  # Ignored for Piper, kept for compatibility
-        model_path: Optional[str] = None,  # Maps to model_dir
+        # Legacy parameters (for backward compatibility with controller.py)
+        # These are accepted but IGNORED - path is always hardcoded to ~/models/piper
+        model_id: Optional[str] = None,  # Ignored - Piper doesn't use model_id
+        model_path: Optional[str] = None,  # Ignored - path is hardcoded, always ~/models/piper
+        model_dir: Optional[str] = None,  # Ignored - path is hardcoded, always ~/models/piper
         speed: Optional[float] = None,  # Maps to length_scale
         
         # Additional voice configs
@@ -87,23 +93,27 @@ class PiperTTSConfig:
     ):
         """Initialize Piper TTS configuration.
         
+        Model directory is ALWAYS hardcoded to ~/models/piper and cannot be changed.
+        This ensures Piper TTS is completely independent from other TTS engines.
+        
         Args:
-            model_dir: Directory containing Piper model files (default: ~/models/piper)
-            voice: Voice ID (default: zh_CN_huayan_medium)
-            model_path: Legacy parameter, maps to model_dir
-            model_id: Legacy parameter, ignored for Piper
-            speed: Legacy parameter, maps to length_scale
-            length_scale: Speech speed (1.0 = normal, <1.0 = faster, >1.0 = slower)
+            voice: Voice ID (default: zh_CN_huayan_medium). Can be "中文女" (auto-converted)
+            speed: Speech speed (1.0 = normal, <1.0 = faster, >1.0 = slower). Maps to length_scale
+            length_scale: Speech speed (alternative to speed parameter)
             volume: Output volume (0.0 - 1.0)
+            model_id: Legacy parameter, IGNORED (Piper doesn't use model_id)
+            model_path: Legacy parameter, IGNORED (path is always ~/models/piper)
+            model_dir: Legacy parameter, IGNORED (path is always ~/models/piper)
             ... other parameters ...
         """
-        # Handle legacy parameters for backward compatibility
-        if model_path:
-            self.model_dir = os.path.expanduser(model_path)
-        elif model_dir:
-            self.model_dir = os.path.expanduser(model_dir)
-        else:
-            self.model_dir = DEFAULT_MODEL_DIR
+        # Model directory is HARDCODED - always ~/models/piper, never uses external config
+        # This ensures Piper TTS is completely independent from CosyVoice and other engines
+        self.model_dir = os.path.expanduser(DEFAULT_MODEL_DIR)
+        logger.info(f"📁 Piper TTS model directory (HARDCODED, independent): {self.model_dir}")
+        
+        # Ignore any model_path/model_dir parameters passed from external config
+        if model_path or model_dir:
+            logger.debug(f"Ignoring external model_path/model_dir parameters (using hardcoded path)")
         
         # Voice mapping: convert legacy "中文女" to Piper voice ID
         if voice:
