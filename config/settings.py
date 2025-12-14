@@ -53,7 +53,7 @@ class ASRSettings(BaseSettings):
     model_id: str = "iic/SenseVoiceSmall"  # Alibaba SenseVoice model
     model_path: str = "~/models/iic/SenseVoiceSmall"  # Local model cache path - matches actual model location
     language: str = "zh"
-    max_wait_seconds: int = 10
+    max_wait_seconds: int = 7  # Reduced from 10 to 7 seconds (max recording time with VAD)
     use_gpu: bool = False  # Use GPU if available
     disable_update: bool = True  # Disable model update checks for faster startup
 

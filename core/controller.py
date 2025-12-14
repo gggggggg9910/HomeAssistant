@@ -389,14 +389,50 @@ class VoiceAssistantController:
             # Clear previous buffer
             self._speech_audio_buffer.clear()
 
-            # Create audio callback
+            # VAD (Voice Activity Detection) parameters
+            silence_threshold = 0.02  # RMS threshold for silence detection
+            min_speech_duration = 0.5  # Minimum speech duration in seconds (before allowing silence)
+            max_silence_duration = 1.5  # Maximum silence duration before stopping (seconds)
+            min_recording_duration = 0.8  # Minimum total recording duration (seconds)
+            max_recording_duration = self.config.asr.max_wait_seconds  # Maximum recording duration
+            
+            # VAD state tracking
+            last_speech_time = None
+            first_speech_time = None
+            silence_start_time = None
+            recording_start_time = None
+
+            # Create audio callback with VAD
             def audio_callback(audio_chunk: np.ndarray):
+                nonlocal last_speech_time, first_speech_time, silence_start_time, recording_start_time
+                
                 if len(self._speech_audio_buffer) == 0:
                     logger.info(f"Audio callback started receiving chunks (first chunk shape: {audio_chunk.shape})")
+                    recording_start_time = time.time()
+                
+                # Calculate RMS for this chunk
+                rms = np.sqrt(np.mean(audio_chunk**2))
+                current_time = time.time()
+                
+                # Detect speech activity
+                if rms > silence_threshold:
+                    # Speech detected
+                    if first_speech_time is None:
+                        first_speech_time = current_time
+                        logger.info(f"[VAD] 检测到语音开始 (RMS: {rms:.4f})")
+                    last_speech_time = current_time
+                    silence_start_time = None
+                else:
+                    # Silence detected
+                    if silence_start_time is None and first_speech_time is not None:
+                        silence_start_time = current_time
+                        logger.debug(f"[VAD] 检测到静音开始 (RMS: {rms:.4f})")
+                
                 self._speech_audio_buffer.append(audio_chunk.copy())
                 self.speech_recognizer.add_audio_chunk(audio_chunk)
+                
                 if len(self._speech_audio_buffer) % 50 == 0:
-                    logger.debug(f"Collected {len(self._speech_audio_buffer)} audio chunks")
+                    logger.debug(f"Collected {len(self._speech_audio_buffer)} audio chunks, RMS: {rms:.4f}")
 
             # Start audio listening
             audio_collection_start = time.time()
@@ -407,16 +443,36 @@ class VoiceAssistantController:
             # Wait a bit for audio to start
             await asyncio.sleep(0.1)
 
-            # Start speech recognition - collect audio for the full duration
-            logger.info(f"Collecting audio for {self.config.asr.max_wait_seconds} seconds...")
-
-            # Wait for the full recognition period
-            await asyncio.sleep(self.config.asr.max_wait_seconds)
+            # Collect audio with VAD - dynamically stop when silence detected
+            logger.info(f"Collecting audio (最大时长: {max_recording_duration}秒, VAD启用)...")
+            
+            check_interval = 0.1  # Check VAD every 100ms
+            elapsed_time = 0
+            
+            while elapsed_time < max_recording_duration:
+                await asyncio.sleep(check_interval)
+                elapsed_time = time.time() - audio_collection_start
+                
+                # Check if we should stop early based on VAD
+                if first_speech_time is not None:
+                    speech_duration = time.time() - first_speech_time
+                    
+                    # Only allow early stop if we've had at least minimum speech duration
+                    if speech_duration >= min_speech_duration:
+                        if silence_start_time is not None:
+                            silence_duration = time.time() - silence_start_time
+                            if silence_duration >= max_silence_duration:
+                                logger.info(f"[VAD] 检测到连续静音 {silence_duration:.2f}秒，提前结束录音 (总时长: {elapsed_time:.2f}秒)")
+                                break
+                    
+                    # Ensure minimum recording duration
+                    if elapsed_time < min_recording_duration:
+                        continue
 
             # Stop audio listening
             await self.audio_manager.stop_listening()
             audio_collection_time = time.time() - audio_collection_start
-            logger.info(f"[语音识别] 音频收集耗时: {audio_collection_time:.3f}秒")
+            logger.info(f"[语音识别] 音频收集耗时: {audio_collection_time:.3f}秒 (VAD优化)")
 
             # Check collected audio
             if self._speech_audio_buffer:
