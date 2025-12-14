@@ -64,12 +64,13 @@ class ASRSettings(BaseSettings):
 
 class TTSSettings(BaseSettings):
     """Text-to-speech configuration."""
-    model_id: str = "iic/CosyVoice2-0.5B"  # Alibaba CosyVoice model
-    model_path: str = "~/models/iic/CosyVoice2-0.5B/CosyVoice-BlankEN"  # Local model directory with config.json
-    voice: str = "中文女"  # Voice style for CosyVoice
-    speed: float = 1.0
+    # Legacy CosyVoice parameters (kept for backward compatibility)
+    model_id: str = "iic/CosyVoice2-0.5B"  # Alibaba CosyVoice model (ignored for Piper)
+    model_path: str = "~/models/piper"  # Model directory (Piper: ~/models/piper, CosyVoice: ~/models/iic/CosyVoice2-0.5B)
+    voice: str = "中文女"  # Voice style (Piper: zh_CN_huayan_medium, CosyVoice: 中文女)
+    speed: float = 1.0  # Speech speed (maps to length_scale for Piper)
     volume: float = 0.8
-    use_gpu: bool = False  # Use GPU if available
+    use_gpu: bool = False  # Use GPU if available (Piper doesn't use GPU)
 
     model_config = {
         "extra": "allow"

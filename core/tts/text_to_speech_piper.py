@@ -17,7 +17,6 @@ import subprocess
 import shutil
 from typing import Optional, Dict, List, Any
 from pathlib import Path
-from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -48,33 +47,93 @@ BUILT_IN_VOICES = {
 }
 
 
-@dataclass
 class PiperTTSConfig:
-    """Configuration for Piper TTS."""
+    """Configuration for Piper TTS.
     
-    # Model settings
-    model_dir: str = DEFAULT_MODEL_DIR
-    voice: str = "zh_CN_huayan_medium"  # Voice ID from BUILT_IN_VOICES or custom model name
-    custom_model_path: Optional[str] = None  # Path to custom .onnx model file
-    custom_config_path: Optional[str] = None  # Path to custom .onnx.json config file
+    Supports both new Piper-specific parameters and legacy CosyVoice parameters
+    for backward compatibility.
+    """
     
-    # Synthesis settings
-    speaker_id: int = 0  # Speaker ID for multi-speaker models
-    length_scale: float = 1.0  # Speech speed (1.0 = normal, <1.0 = faster, >1.0 = slower)
-    noise_scale: float = 0.667  # Variation in speech (0.0 = monotone, 1.0 = varied)
-    noise_w: float = 0.8  # Variation in phoneme duration
-    sentence_silence: float = 0.2  # Seconds of silence after each sentence
-    
-    # Audio settings
-    volume: float = 0.9  # Output volume (0.0 - 1.0)
-    sample_rate: int = 22050  # Will be overridden by model config
-    
-    # Performance settings (for Raspberry Pi optimization)
-    use_cuda: bool = False  # Piper doesn't use CUDA on Pi, always CPU
-    num_threads: int = 4  # Number of CPU threads (Pi 5 has 4 cores)
-    
-    # Additional voice configs for multi-role support
-    voice_configs: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    def __init__(
+        self,
+        # Piper-specific parameters
+        model_dir: Optional[str] = None,
+        voice: Optional[str] = None,
+        custom_model_path: Optional[str] = None,
+        custom_config_path: Optional[str] = None,
+        
+        # Synthesis settings
+        speaker_id: int = 0,
+        length_scale: Optional[float] = None,
+        noise_scale: float = 0.667,
+        noise_w: float = 0.8,
+        sentence_silence: float = 0.2,
+        
+        # Audio settings
+        volume: float = 0.9,
+        sample_rate: int = 22050,
+        
+        # Performance settings
+        use_cuda: bool = False,
+        num_threads: int = 4,
+        
+        # Legacy CosyVoice parameters (for backward compatibility)
+        model_id: Optional[str] = None,  # Ignored for Piper, kept for compatibility
+        model_path: Optional[str] = None,  # Maps to model_dir
+        speed: Optional[float] = None,  # Maps to length_scale
+        
+        # Additional voice configs
+        voice_configs: Optional[Dict[str, Dict[str, Any]]] = None,
+    ):
+        """Initialize Piper TTS configuration.
+        
+        Args:
+            model_dir: Directory containing Piper model files (default: ~/models/piper)
+            voice: Voice ID (default: zh_CN_huayan_medium)
+            model_path: Legacy parameter, maps to model_dir
+            model_id: Legacy parameter, ignored for Piper
+            speed: Legacy parameter, maps to length_scale
+            length_scale: Speech speed (1.0 = normal, <1.0 = faster, >1.0 = slower)
+            volume: Output volume (0.0 - 1.0)
+            ... other parameters ...
+        """
+        # Handle legacy parameters for backward compatibility
+        if model_path:
+            self.model_dir = os.path.expanduser(model_path)
+        elif model_dir:
+            self.model_dir = os.path.expanduser(model_dir)
+        else:
+            self.model_dir = DEFAULT_MODEL_DIR
+        
+        # Voice mapping: convert legacy "中文女" to Piper voice ID
+        if voice:
+            if voice == "中文女":
+                self.voice = "zh_CN_huayan_medium"
+            else:
+                self.voice = voice
+        else:
+            self.voice = "zh_CN_huayan_medium"
+        
+        self.custom_model_path = custom_model_path
+        self.custom_config_path = custom_config_path
+        
+        # Speed/length_scale mapping
+        if speed is not None:
+            self.length_scale = speed
+        elif length_scale is not None:
+            self.length_scale = length_scale
+        else:
+            self.length_scale = 1.0
+        
+        self.speaker_id = speaker_id
+        self.noise_scale = noise_scale
+        self.noise_w = noise_w
+        self.sentence_silence = sentence_silence
+        self.volume = volume
+        self.sample_rate = sample_rate
+        self.use_cuda = use_cuda
+        self.num_threads = num_threads
+        self.voice_configs = voice_configs or {}
 
 
 class TextToSpeechPiper:
