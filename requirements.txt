@@ -20,10 +20,14 @@ datasets>=2.4.0
 # Alibaba Qwen LLM
 dashscope>=1.14.0
 
-# Text-to-speech (Alibaba CosyVoice)
+# Text-to-speech (Alibaba CosyVoice - optional, for high-end hardware)
 # cosyvoice will be installed from git (see installation instructions)
 # Additional dependencies for CosyVoice will be installed via modelscope
-torchcodec>=0.1.0
+# torchcodec>=0.1.0  # Only needed for CosyVoice
+
+# Text-to-speech (Piper TTS - recommended for Raspberry Pi)
+# Fast, lightweight neural TTS optimized for embedded devices
+piper-tts>=1.2.0
 
 # Configuration and utilities
 python-dotenv>=1.0.0
