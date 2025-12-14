@@ -14,12 +14,23 @@ try:
     from modelscope.pipelines import pipeline
     from modelscope.utils.constant import Tasks
     MODELScope_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     MODELScope_AVAILABLE = False
     torch = None
     snapshot_download = None
     pipeline = None
     Tasks = None
+    # Store error for later debugging
+    _import_error = str(e)
+except Exception as e:
+    MODELScope_AVAILABLE = False
+    torch = None
+    snapshot_download = None
+    pipeline = None
+    Tasks = None
+    _import_error = str(e)
+else:
+    _import_error = None
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +69,39 @@ class SpeechRecognizer:
 
     async def initialize(self) -> bool:
         """Initialize the SenseVoice speech recognizer."""
+        # Debug: Check current state and try re-importing if needed
+        if not MODELScope_AVAILABLE:
+            logger.warning(f"MODELScope_AVAILABLE is False, attempting to import modelscope again...")
+            if '_import_error' in globals():
+                logger.debug(f"Previous import error: {_import_error}")
+            
+            try:
+                import torch as t
+                from modelscope import snapshot_download as sd
+                from modelscope.pipelines import pipeline as p
+                from modelscope.utils.constant import Tasks as T
+                
+                # Update global variables
+                global torch, snapshot_download, pipeline, Tasks, MODELScope_AVAILABLE
+                torch = t
+                snapshot_download = sd
+                pipeline = p
+                Tasks = T
+                MODELScope_AVAILABLE = True
+                
+                logger.info("✅ modelscope imported successfully on retry!")
+            except ImportError as e:
+                logger.error(f"❌ modelscope import failed: {e}")
+                logger.error("Please check: pip install modelscope torch")
+                import traceback
+                logger.debug(traceback.format_exc())
+                return False
+            except Exception as e:
+                logger.error(f"❌ Unexpected error importing modelscope: {e}")
+                import traceback
+                logger.debug(traceback.format_exc())
+                return False
+        
         if not MODELScope_AVAILABLE:
             logger.error("modelscope not available. Please install with: pip install modelscope")
             return False
