@@ -7,7 +7,15 @@ sounddevice>=0.4.6
 # sherpa-onnx>=1.10.0
 
 # Alibaba AI models (ModelScope ecosystem)
+# Note: SenseVoice requires FunASR packages
+# pysptk is NOT needed for SenseVoice (it's for TTS, not ASR)
+# Install with: pip install funasr funasr-runtime funasr-modelscope
 modelscope>=1.20.0
+# FunASR packages for SenseVoice (required, install separately)
+# Uncomment these if modelscope[audio] fails:
+# funasr>=1.0.0
+# funasr-runtime>=1.0.0
+# funasr-modelscope>=1.0.0
 torch>=2.0.0
 torchaudio>=2.0.0
 torchvision>=0.15.0
@@ -23,6 +31,8 @@ oss2>=2.17.0
 addict>=2.4.0
 openmim>=0.3.0
 timm>=0.9.0
+simplejson>=3.17.0
+sortedcontainers>=2.4.0
 
 # Alibaba Qwen LLM
 dashscope>=1.14.0

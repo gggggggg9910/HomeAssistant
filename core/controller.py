@@ -9,6 +9,8 @@ from enum import Enum
 from typing import Optional, Callable
 import numpy as np
 
+from .utils import PerformanceMonitor
+
 logger = logging.getLogger(__name__)
 
 
@@ -43,6 +45,12 @@ class VoiceAssistantController:
 
         # Current audio buffer for speech recognition
         self._speech_audio_buffer = []
+        
+        # Performance monitoring
+        self.performance_monitor = PerformanceMonitor("VoiceAssistant")
+        
+        # Performance monitor
+        self.perf_monitor = PerformanceMonitor("VoiceAssistant")
 
     async def initialize(self) -> bool:
         """Initialize all components."""
@@ -261,12 +269,17 @@ class VoiceAssistantController:
                 if not keyword_detected:
                     continue  # Continue listening
 
+                # Start performance monitoring from keyword detection
+                self.performance_monitor.start()
+
                 # Phase 2: Recognize speech
                 self._set_state(AssistantState.RECOGNIZING_SPEECH)
-                user_text = await self._recognize_speech()
+                with self.performance_monitor.stage("语音识别(ASR)"):
+                    user_text = await self._recognize_speech()
 
                 if not user_text:
                     # Play error sound or message
+                    self.performance_monitor.end()
                     await self._play_error_message("没有听到您的语音，请重试")
                     continue
 
@@ -274,15 +287,21 @@ class VoiceAssistantController:
 
                 # Phase 3: Process with LLM
                 self._set_state(AssistantState.PROCESSING_REQUEST)
-                ai_response = await self._process_with_llm(user_text)
+                with self.performance_monitor.stage("LLM处理"):
+                    ai_response = await self._process_with_llm(user_text)
 
                 if not ai_response:
+                    self.performance_monitor.end()
                     await self._play_error_message("处理请求时出现错误")
                     continue
 
                 # Phase 4: Speak response
                 self._set_state(AssistantState.SPEAKING_RESPONSE)
-                await self._speak_response(ai_response)
+                with self.performance_monitor.stage("TTS合成与播放"):
+                    await self._speak_response(ai_response)
+
+                # End performance monitoring and log summary
+                self.performance_monitor.end()
 
                 # Brief pause before listening again
                 logger.info("Conversation completed, continuing to listen...")
@@ -290,6 +309,7 @@ class VoiceAssistantController:
 
             except Exception as e:
                 logger.error(f"Error in assistant loop iteration: {e}")
+                self.performance_monitor.end()
                 self._set_state(AssistantState.ERROR)
                 await asyncio.sleep(1)
 
@@ -360,6 +380,9 @@ class VoiceAssistantController:
 
     async def _recognize_speech(self) -> Optional[str]:
         """Recognize speech after keyword detection."""
+        import time
+        recognition_start = time.time()
+        
         try:
             logger.info("Starting speech recognition...")
 
@@ -376,6 +399,7 @@ class VoiceAssistantController:
                     logger.debug(f"Collected {len(self._speech_audio_buffer)} audio chunks")
 
             # Start audio listening
+            audio_collection_start = time.time()
             audio_task = asyncio.create_task(
                 self.audio_manager.start_listening(audio_callback)
             )
@@ -391,19 +415,31 @@ class VoiceAssistantController:
 
             # Stop audio listening
             await self.audio_manager.stop_listening()
+            audio_collection_time = time.time() - audio_collection_start
+            logger.info(f"[语音识别] 音频收集耗时: {audio_collection_time:.3f}秒")
 
             # Check collected audio
             if self._speech_audio_buffer:
                 logger.info(f"Collected {len(self._speech_audio_buffer)} audio chunks for recognition")
 
                 # Concatenate audio
+                prep_start = time.time()
                 full_audio = np.concatenate(self._speech_audio_buffer)
                 rms = np.sqrt(np.mean(full_audio**2))
-                logger.info(f"Audio RMS: {rms:.4f}, duration: {len(full_audio)/16000:.2f}s")
+                prep_time = time.time() - prep_start
+                audio_duration = len(full_audio) / 16000
+                logger.info(f"[语音识别] 音频预处理耗时: {prep_time:.3f}秒")
+                logger.info(f"Audio RMS: {rms:.4f}, duration: {audio_duration:.2f}s")
 
                 # Try recognition
                 if rms > 0.01:  # Only if audio is loud enough
+                    asr_start = time.time()
                     result = await self.speech_recognizer.recognize_speech(full_audio)
+                    asr_time = time.time() - asr_start
+                    logger.info(f"[语音识别] ASR识别耗时: {asr_time:.3f}秒")
+                    
+                    total_recognition_time = time.time() - recognition_start
+                    logger.info(f"[语音识别] 总耗时: {total_recognition_time:.3f}秒 (收集: {audio_collection_time:.3f}秒, ASR: {asr_time:.3f}秒)")
                     return result
                 else:
                     logger.info("Audio too quiet for recognition")

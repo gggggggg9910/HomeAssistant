@@ -3,6 +3,7 @@ LLM integration for AI dialogue using Alibaba Qwen models.
 """
 import asyncio
 import logging
+import time
 from typing import Optional, List, Dict, Any
 import json
 
@@ -226,21 +227,36 @@ class LLMClient:
             logger.error("Qwen LLM client not initialized")
             return None
 
+        start_time = time.time()
+        
         try:
             # Add user message to conversation
+            prep_start = time.time()
             self.conversation.add_message("user", user_input)
+            prep_time = time.time() - prep_start
+            logger.info(f"[LLM性能] 消息准备耗时: {prep_time:.3f}秒")
 
             # Generate response
             if self.config.use_local and self.local_model:
                 # Use local Qwen model
+                logger.info("[LLM性能] 使用本地模型生成回复")
+                inference_start = time.time()
                 response = await self._generate_local_response()
+                inference_time = time.time() - inference_start
+                logger.info(f"[LLM性能] 本地模型推理耗时: {inference_time:.3f}秒")
             else:
                 # Use DashScope API
+                logger.info("[LLM性能] 使用DashScope API生成回复")
+                inference_start = time.time()
                 response = await self._generate_dashscope_response()
+                inference_time = time.time() - inference_start
+                logger.info(f"[LLM性能] API调用耗时: {inference_time:.3f}秒")
 
             if response:
                 # Add assistant response to conversation
                 self.conversation.add_message("assistant", response)
+                total_time = time.time() - start_time
+                logger.info(f"[LLM性能] 总耗时: {total_time:.3f}秒, 响应长度: {len(response)}字符")
                 logger.info(f"Qwen generated response: {response[:100]}...")
                 return response
             else:
@@ -248,6 +264,8 @@ class LLMClient:
                 return None
 
         except Exception as e:
+            total_time = time.time() - start_time
+            logger.error(f"[LLM性能] 错误，总耗时: {total_time:.3f}秒")
             logger.error(f"Error generating Qwen response: {e}")
             return None
 

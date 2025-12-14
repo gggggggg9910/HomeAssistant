@@ -258,10 +258,19 @@ class TextToSpeech:
         Returns:
             True if successful, False otherwise
         """
+        import time
+        start_time = time.time()
+        
         try:
             logger.info(f"TTS speak_text called with: '{text}'")
+            
+            # Synthesize speech
+            synthesis_start = time.time()
             logger.info("TTS calling synthesize_speech...")
             audio_data = await self.synthesize_speech(text)
+            synthesis_time = time.time() - synthesis_start
+            logger.info(f"[TTS性能] 语音合成耗时: {synthesis_time:.3f}秒")
+            
             logger.info(f"TTS synthesis result: audio_data is {'not ' if audio_data is None else ''}None")
             if audio_data is None:
                 logger.error("TTS synthesis failed, cannot play audio")
@@ -279,6 +288,7 @@ class TextToSpeech:
 
             try:
                 # Save audio to temporary WAV file
+                file_prep_start = time.time()
                 with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
                     temp_path = temp_file.name
 
@@ -293,8 +303,11 @@ class TextToSpeech:
                     wf.setsampwidth(2)  # 16-bit
                     wf.setframerate(22050)
                     wf.writeframes(audio_data_int16.tobytes())
+                file_prep_time = time.time() - file_prep_start
+                logger.info(f"[TTS性能] 文件准备耗时: {file_prep_time:.3f}秒")
 
                 # Try multiple audio devices in order of preference
+                playback_start = time.time()
                 audio_devices = ['default', 'sysdefault', 'hw:2,0']
 
                 result = None
@@ -322,6 +335,9 @@ class TextToSpeech:
                     result = subprocess.run(['aplay', temp_path],
                                           capture_output=True, timeout=10)
 
+                playback_time = time.time() - playback_start
+                logger.info(f"[TTS性能] 音频播放耗时: {playback_time:.3f}秒")
+
                 # Since audio hardware has issues, we consider TTS successful if file was generated
                 # Save file for manual playback or future use
                 manual_file = "/tmp/tts_output.wav"
@@ -329,6 +345,8 @@ class TextToSpeech:
                 shutil.copy2(temp_path, manual_file)
 
                 success = True  # Consider successful since we generated the audio file
+                total_time = time.time() - start_time
+                logger.info(f"[TTS性能] 总耗时: {total_time:.3f}秒 (合成: {synthesis_time:.3f}秒, 播放: {playback_time:.3f}秒)")
                 logger.info(f"TTS audio generated successfully, saved to {manual_file}")
                 print(f"🎵 TTS: 音频文件已生成并保存到 {manual_file}")
 
@@ -346,6 +364,8 @@ class TextToSpeech:
                 return False
 
         except Exception as e:
+            total_time = time.time() - start_time
+            logger.error(f"[TTS性能] 错误，总耗时: {total_time:.3f}秒")
             logger.error(f"Failed to speak text: {e}")
             return False
 

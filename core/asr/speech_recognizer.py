@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Optional, List, Union
 import numpy as np
 
+from ..utils import PerformanceMonitor
+
 try:
     import torch
     from modelscope import snapshot_download
@@ -66,6 +68,7 @@ class SpeechRecognizer:
         self._is_recording = False
         self._audio_buffer = []
         self._buffer_lock = asyncio.Lock()
+        self.asr_monitor = PerformanceMonitor("ASR")
 
     async def initialize(self) -> bool:
         """Initialize the SenseVoice speech recognizer."""
@@ -96,7 +99,7 @@ class SpeechRecognizer:
                 logger.error(f"❌ modelscope import failed: {e}")
                 logger.error("Common fixes:")
                 logger.error("  pip install 'datasets<3.0.0'  # Downgrade datasets")
-                logger.error("  pip install oss2 addict      # Missing dependencies")
+                logger.error("  pip install oss2 addict simplejson sortedcontainers  # Missing dependencies")
                 import traceback
                 logger.debug(traceback.format_exc())
                 return False
@@ -152,7 +155,27 @@ class SpeechRecognizer:
             return True
 
         except Exception as e:
+            error_msg = str(e)
             logger.error(f"Failed to initialize SenseVoice recognizer: {e}")
+            
+            # Check if it's the audio extension error
+            if "modelscope[audio]" in error_msg or "audio model import failed" in error_msg.lower() or "funasr" in error_msg.lower():
+                logger.error("=" * 60)
+                logger.error("SenseVoice requires FunASR audio extension!")
+                logger.error("")
+                logger.error("Try installing modelscope[audio] but skip pysptk:")
+                logger.error("  pip install 'modelscope[audio]>=1.20.0' --no-deps")
+                logger.error("  pip install funasr funasr-runtime")
+                logger.error("  # Then manually install other audio dependencies (except pysptk)")
+                logger.error("")
+                logger.error("Or install SPTK first (if you need pysptk):")
+                logger.error("  sudo apt-get install -y build-essential libfftw3-dev")
+                logger.error("  wget http://download.sourceforge.net/sp-tk/SPTK-3.11.tar.gz")
+                logger.error("  tar -xzf SPTK-3.11.tar.gz && cd SPTK-3.11")
+                logger.error("  ./configure --prefix=/usr/local && make && sudo make install")
+                logger.error("  pip install pysptk")
+                logger.error("=" * 60)
+            
             return False
 
     async def cleanup(self):
@@ -181,61 +204,71 @@ class SpeechRecognizer:
             logger.error("SenseVoice recognizer not initialized")
             return None
 
+        self.asr_monitor.start()
+        
         try:
             # Run inference
             if isinstance(audio_data, np.ndarray):
-                # Convert numpy array to the format expected by modelscope
-                # SenseVoice expects audio data in the correct format
-                if audio_data.dtype != np.float32:
-                    audio_data = audio_data.astype(np.float32)
+                with self.asr_monitor.stage("音频预处理"):
+                    # Convert numpy array to the format expected by modelscope
+                    # SenseVoice expects audio data in the correct format
+                    if audio_data.dtype != np.float32:
+                        audio_data = audio_data.astype(np.float32)
 
-                # Ensure proper shape (should be 1D for single channel)
-                if len(audio_data.shape) > 1:
-                    audio_data = audio_data.flatten()
+                    # Ensure proper shape (should be 1D for single channel)
+                    if len(audio_data.shape) > 1:
+                        audio_data = audio_data.flatten()
 
-                # Try different input formats for SenseVoice
-                # Some versions expect numpy array directly, others expect dict
-                try:
-                    # First try direct numpy array
-                    audio_input = audio_data
-                    result = self.pipeline(audio_input)
-                except Exception:
-                    # If direct array fails, try dict format
-                    audio_input = {
-                        'array': audio_data,
-                        'sampling_rate': 16000
-                    }
-                    result = self.pipeline(audio_input)
+                    # Try different input formats for SenseVoice
+                    # Some versions expect numpy array directly, others expect dict
+                    try:
+                        # First try direct numpy array
+                        audio_input = audio_data
+                    except Exception:
+                        # If direct array fails, try dict format
+                        audio_input = {
+                            'array': audio_data,
+                            'sampling_rate': 16000
+                        }
+                    
+                    audio_duration = len(audio_data) / self.config.sample_rate
+                    logger.info(f"[ASR] 音频长度: {audio_duration:.2f}秒, 采样数: {len(audio_data)}")
             else:
                 # Assume it's a file path
                 audio_input = audio_data
 
             # Run recognition
-            result = self.pipeline(audio_input)
+            with self.asr_monitor.stage("模型推理"):
+                result = self.pipeline(audio_input)
 
             # Extract text from result
-            if isinstance(result, dict) and 'text' in result:
-                text = result['text'].strip()
-            elif isinstance(result, str):
-                text = result.strip()
-            elif isinstance(result, list) and len(result) > 0:
-                # Sometimes result is a list of segments
-                text = ' '.join([seg.get('text', '') for seg in result if isinstance(seg, dict)]).strip()
-            else:
-                text = str(result).strip()
+            with self.asr_monitor.stage("结果后处理"):
+                if isinstance(result, dict) and 'text' in result:
+                    text = result['text'].strip()
+                elif isinstance(result, str):
+                    text = result.strip()
+                elif isinstance(result, list) and len(result) > 0:
+                    # Sometimes result is a list of segments
+                    text = ' '.join([seg.get('text', '') for seg in result if isinstance(seg, dict)]).strip()
+                else:
+                    text = str(result).strip()
 
-            if text:
-                # Clean up SenseVoice special tokens
-                # Remove <|zh|>, <|NEUTRAL|>, <|Speech|>, etc.
-                import re
-                cleaned_text = re.sub(r'<\|[^>]+\|>', '', text).strip()
-                logger.info(f"SenseVoice recognized speech: '{text}' -> cleaned: '{cleaned_text}'")
-                return cleaned_text if cleaned_text else text
-            else:
-                logger.debug("SenseVoice: No speech recognized")
-                return None
+                if text:
+                    # Clean up SenseVoice special tokens
+                    # Remove <|zh|>, <|NEUTRAL|>, <|Speech|>, etc.
+                    import re
+                    cleaned_text = re.sub(r'<\|[^>]+\|>', '', text).strip()
+                    logger.info(f"SenseVoice recognized speech: '{text}' -> cleaned: '{cleaned_text}'")
+                    final_text = cleaned_text if cleaned_text else text
+                else:
+                    logger.debug("SenseVoice: No speech recognized")
+                    final_text = None
+
+            self.asr_monitor.end()
+            return final_text
 
         except Exception as e:
+            self.asr_monitor.end()
             logger.error(f"Error during SenseVoice speech recognition: {e}")
             return None
 
