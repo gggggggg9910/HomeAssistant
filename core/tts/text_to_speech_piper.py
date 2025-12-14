@@ -370,6 +370,69 @@ class TextToSpeechPiper:
         """Check if TTS is initialized."""
         return self._is_initialized
 
+    def _clean_text_for_tts(self, text: str) -> str:
+        """Clean text for TTS synthesis.
+        
+        Removes Markdown formatting, special characters, and normalizes text
+        to ensure Piper TTS can process it correctly.
+        
+        Args:
+            text: Raw text with possible Markdown/special characters
+            
+        Returns:
+            Cleaned text suitable for TTS
+        """
+        import re
+        
+        # Remove Markdown formatting
+        # Remove bold/italic: **text**, *text*, __text__, _text_
+        text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)  # **bold**
+        text = re.sub(r'\*([^*]+)\*', r'\1', text)      # *italic*
+        text = re.sub(r'__([^_]+)__', r'\1', text)      # __bold__
+        text = re.sub(r'_([^_]+)_', r'\1', text)        # _italic_
+        
+        # Remove code blocks: `code`, ```code```
+        text = re.sub(r'```[^`]*```', '', text)  # Multi-line code blocks
+        text = re.sub(r'`([^`]+)`', r'\1', text)  # Inline code
+        
+        # Remove links: [text](url)
+        text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
+        
+        # Remove headers: # Header, ## Header, etc.
+        text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+        
+        # Remove list markers: -, *, 1., etc. (keep the text)
+        text = re.sub(r'^[\s]*[-*•]\s+', '', text, flags=re.MULTILINE)
+        text = re.sub(r'^\d+\.\s+', '', text, flags=re.MULTILINE)
+        
+        # Remove excessive whitespace
+        text = re.sub(r'\n{3,}', '\n\n', text)  # Max 2 newlines
+        text = re.sub(r'[ \t]+', ' ', text)     # Multiple spaces to one
+        
+        # Remove special characters that might cause issues
+        # Keep Chinese characters, English letters, numbers, and common punctuation
+        text = re.sub(r'[^\w\s\u4e00-\u9fff，。！？；：、""''（）【】《》\.,!?;:\-]', '', text)
+        
+        # Normalize punctuation
+        text = text.replace('，', '，').replace('。', '。')
+        text = text.replace('！', '！').replace('？', '？')
+        
+        # Trim whitespace
+        text = text.strip()
+        
+        # Limit text length (Piper may have issues with very long text)
+        max_length = 2000  # Characters
+        if len(text) > max_length:
+            logger.warning(f"Text too long ({len(text)} chars), truncating to {max_length} chars")
+            # Try to truncate at sentence boundary
+            sentences = re.split(r'[。！？\n]', text[:max_length])
+            if len(sentences) > 1:
+                text = '。'.join(sentences[:-1]) + '。'
+            else:
+                text = text[:max_length]
+        
+        return text
+
     async def synthesize_speech(self, text: str, voice: Optional[str] = None) -> Optional[np.ndarray]:
         """Convert text to speech audio using Piper.
 
@@ -388,6 +451,15 @@ class TextToSpeechPiper:
             logger.warning("Empty text provided for synthesis")
             return None
 
+        # Clean text before synthesis (remove Markdown, special chars, etc.)
+        cleaned_text = self._clean_text_for_tts(text)
+        if not cleaned_text or not cleaned_text.strip():
+            logger.error("Text is empty after cleaning")
+            return None
+        
+        if cleaned_text != text:
+            logger.debug(f"Text cleaned: original length={len(text)}, cleaned length={len(cleaned_text)}")
+
         # Switch voice if needed
         if voice and voice != self._current_voice:
             if voice in self._voices:
@@ -399,15 +471,15 @@ class TextToSpeechPiper:
                 return None
 
         try:
-            logger.info(f"Piper synthesizing: '{text[:50]}...' with voice: {self._current_voice}")
+            logger.info(f"Piper synthesizing: '{cleaned_text[:50]}...' with voice: {self._current_voice}")
             
             # Create temporary output file
             with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
                 output_path = temp_file.name
             
             try:
-                # Build piper command
-                cmd = self._build_piper_command(text, output_path)
+                # Build piper command (text is passed via stdin, not command line)
+                cmd = self._build_piper_command(output_path)
                 logger.debug(f"Running piper command: {' '.join(cmd[:5])}...")
                 
                 # Run piper
@@ -418,9 +490,9 @@ class TextToSpeechPiper:
                     stderr=subprocess.PIPE
                 )
                 
-                # Send text to piper
+                # Send cleaned text to piper
                 stdout, stderr = process.communicate(
-                    input=text.encode('utf-8'),
+                    input=cleaned_text.encode('utf-8'),
                     timeout=60  # 60 second timeout
                 )
                 
@@ -462,8 +534,8 @@ class TextToSpeechPiper:
             traceback.print_exc()
             return None
     
-    def _build_piper_command(self, text: str, output_path: str) -> List[str]:
-        """Build the piper command line."""
+    def _build_piper_command(self, output_path: str) -> List[str]:
+        """Build the piper command line. Text is passed via stdin."""
         cmd = [
             'piper',
             '--model', self._model_path,
